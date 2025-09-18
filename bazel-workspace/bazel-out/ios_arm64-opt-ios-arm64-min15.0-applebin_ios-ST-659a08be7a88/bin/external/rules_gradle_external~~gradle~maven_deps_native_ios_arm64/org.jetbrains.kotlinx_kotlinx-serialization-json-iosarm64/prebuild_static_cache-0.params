@@ -1,0 +1,14 @@
+-g
+-target
+ios_arm64
+-p
+static_cache
+-Xoverride-konan-properties='clangDebugFlags.ios_arm64=-Os -mllvm -fast-isel=false -mllvm -global-isel=false'
+-target
+ios_arm64
+-l
+external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_kotlinx-serialization-core-iosarm64_kotlinx-serialization-core.klib
+-Xadd-cache=external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_kotlinx-serialization-json-iosarm64_kotlinx-serialization-json.klib
+-Xcache-directory=bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/bin/external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/org.jetbrains.kotlinx_kotlinx-serialization-json-iosarm64/prebuild_static_cache
+-Xcache-directory=bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/bin/external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/org.jetbrains.kotlinx_kotlinx-serialization-core-iosarm64/prebuild_static_cache
+-Xcache-directory=bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/bin/external/rules_kotlin_mobile~~deps_ext~com_github_jetbrains_kotlin_native_macos-aarch64/ios_arm64_stdlib_prebuild/prebuild_static_cache

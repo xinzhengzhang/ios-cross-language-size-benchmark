@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Mock wrapped_clang that forwards to real clang
+# This simulates bazel-out/.../external/apple_support~/crosstool/wrapped_clang
+
+# Find the real clang
+REAL_CLANG=$(xcrun --find clang)
+
+if [ -z "$REAL_CLANG" ]; then
+    echo "Error: clang not found. Make sure Xcode command line tools are installed."
+    exit 1
+fi
+
+# Replace bazel-specific paths with real paths
+NEW_ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        "__BAZEL_XCODE_SDKROOT__")
+            NEW_ARGS+=("$(xcrun --sdk iphoneos --show-sdk-path)")
+            ;;
+        "__BAZEL_XCODE_DEVELOPER_DIR__")
+            NEW_ARGS+=("$(xcode-select -p)")
+            ;;
+        *)
+            NEW_ARGS+=("$arg")
+            ;;
+    esac
+done
+
+echo "Wrapped clang executing: $REAL_CLANG ${NEW_ARGS[@]}"
+exec "$REAL_CLANG" "${NEW_ARGS[@]}"

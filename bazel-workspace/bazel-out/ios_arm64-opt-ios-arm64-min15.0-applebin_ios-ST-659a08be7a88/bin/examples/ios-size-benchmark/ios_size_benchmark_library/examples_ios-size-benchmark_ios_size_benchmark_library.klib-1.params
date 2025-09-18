@@ -1,0 +1,10 @@
+-l
+external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_atomicfu-iosarm64_atomicfu.klib
+-l
+external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_atomicfu-iosarm64_atomicfu-cinterop-interop.klib
+-l
+external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_kotlinx-coroutines-core-iosarm64_kotlinx-coroutines-core-iosArm64Main.klib
+-l
+external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_kotlinx-serialization-core-iosarm64_kotlinx-serialization-core.klib
+-l
+external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/flatten_artifacts/org.jetbrains.kotlinx_kotlinx-serialization-json-iosarm64_kotlinx-serialization-json.klib

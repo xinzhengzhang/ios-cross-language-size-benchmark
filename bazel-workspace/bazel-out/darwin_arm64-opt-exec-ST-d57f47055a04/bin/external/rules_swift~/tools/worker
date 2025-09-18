@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Mock Swift worker that forwards to real swiftc
+# This simulates bazel-out/.../external/rules_swift~/tools/worker/worker
+
+REAL_SWIFTC=$(xcrun --find swiftc)
+
+if [ -z "$REAL_SWIFTC" ]; then
+    echo "Error: swiftc not found. Make sure Xcode is installed."
+    exit 1
+fi
+
+echo "Swift worker executing: $REAL_SWIFTC $@"
+exec "$REAL_SWIFTC" "$@"

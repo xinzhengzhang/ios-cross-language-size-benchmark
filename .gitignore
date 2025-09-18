@@ -1,0 +1,42 @@
+
+# Ignore .DS_Store files everywhere
+**/.DS_Store
+
+# Ignore prebuild_static_cache directories everywhere  
+**/prebuild_static_cache/
+
+# In bazel-workspace, ignore everything except specific paths
+bazel-workspace/*
+!bazel-workspace/bazel-out/
+!bazel-workspace/external/
+!bazel-workspace/examples/
+
+# In bazel-out, ignore everything except specific subdirectories
+bazel-workspace/bazel-out/*
+!bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/
+!bazel-workspace/bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/
+
+# In the ios subdirectory, ignore all files but keep directories to traverse
+bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/**/*
+!bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/**/
+
+# Only include .params and .klib files
+!bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/**/*.params
+!bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/**/*.klib
+bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/bin/examples/ios-size-benchmark/ios_size_benchmark_library/examples_ios-size-benchmark_ios_size_benchmark_library.klib
+
+# Include darwin_arm64 tools
+!bazel-workspace/bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/**/*
+!bazel-workspace/bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/apple_support~/crosstool/wrapped_clang
+!bazel-workspace/bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/rules_swift~/tools/worker/worker
+
+# Include external dependencies
+!bazel-workspace/external/rules_gradle_external~~gradle~maven_deps_native_ios_arm64/**/*
+
+# Ignore dynamically copied source files (replaced by benchmark script)
+bazel-workspace/examples/ios-size-benchmark/src/commonMain/kotlin/kntr/examples/ios/size/benchmark/IosSizeBenchmark.kt
+bazel-workspace/examples/ios-size-benchmark/src/iosMain/objc/lib.m
+bazel-workspace/examples/ios-size-benchmark/src/iosMain/swift/lib.swift
+
+# Backup_sources
+backup_original_sources/

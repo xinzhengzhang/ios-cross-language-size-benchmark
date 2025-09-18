@@ -1,0 +1,17 @@
+examples/ios-size-benchmark/src/commonMain/kotlin/kntr/examples/ios/size/benchmark/IosSizeBenchmark.kt
+-p
+library
+-target
+ios_arm64
+-o
+bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/bin/examples/ios-size-benchmark/ios_size_benchmark_library/examples_ios-size-benchmark_ios_size_benchmark_library.klib
+-module-name
+examples_ios-size-benchmark_ios_size_benchmark_library
+-no-endorsed-libs
+-Xmulti-platform
+-Xexpect-actual-classes
+-Xcontext-parameters
+-Xnew-inference
+-Xallocator=custom
+-Xplugin=bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/rules_gradle_external~~gradle~maven_compile_tools/flatten_artifacts/processed_org.jetbrains.kotlin_kotlin-serialization-compiler-plugin-embeddable_kotlin-serialization-compiler-plugin-embeddable.jar
+-opt
