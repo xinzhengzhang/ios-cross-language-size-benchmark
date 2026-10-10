@@ -44,3 +44,6 @@ node_modules/
 .scriptc/
 *.lib.a
 *.lib.ll
+.speedbuild/
+*.kexe
+*.dSYM/

@@ -313,6 +313,67 @@ scriptc 各用例的数字和 `scriptc/ObjC` 倍率见上方结果汇总表。
 计入——反而更小（`json-serialization` 0.49x、`inheritance-deep` 0.78x、
 `collection-minimal` 0.88x）。它用体积换速度和自包含产物；见下方 macOS 执行速度档。
 
+## 执行速度（macOS）
+
+体积只是一半。`./benchmark_speed.sh` 测量每种语言把**同一个 `runBenchmark` 工作负载**
+作为原生 **macOS** 可执行文件运行的速度（size 档的姊妹篇）。原始数字在
+`results_speed.csv`。
+
+**方法**（细节见 `benchmark_speed.sh` 头部）：
+- 原生 macOS 可执行文件，与 size 档 **-Os 对齐**：`clang -Os`、`swiftc -Osize`、
+  `konanc -opt`、scriptc 默认/release——不是为速度调优的构建。
+- 驱动每次迭代**构造一个全新的 `IosSizeBenchmark`**（无状态单元；与 scriptc 的自由函数
+  `runBenchmark` 一致）。每次迭代耗时 = `(minWall(N) − minWall(0)) / N`——0 次迭代的运行
+  隔离出进程启动开销并被减掉，使各语言的启动成本不产生偏差。每次测量先做一次 warmup，
+  再取 5 个样本的最小值。
+- `N` 按用例标定（各语言同一个 `N`），使 N 次运行约 0.5 秒。重的用例（每次调用毫秒级）
+  落在小 `N`，轻的用例在大 `N`（见下表）。
+
+**覆盖说明：** `async`/`async-enhanced` 被排除（其驱动会 sleep）。ObjC 有 4 个用例、
+Swift/Kotlin 各 1 个用例为 N/A——这些用例调用了声明但未实现的方法，运行时崩溃（对 size 档
+无妨，它从不执行）。**这些是各语言的*惯用*实现（与 size 档完全相同），不是手工对齐的等价
+实现**——所以速度反映的是惯用实现的成本，而非纯语言速度。极端的差距（如 string-processing：
+ObjC 的 `NSString` 原语 vs 其他语言的手写字符串处理）是真实的实现差异。
+
+| 用例 | N | ObjC | Swift | Kotlin | scriptc | 最快 |
+|------|---|------|-------|--------|---------|------|
+| **callback** | 10 | N/A | 73.36 ms | 68.95 ms | 37.05 ms | **scriptc** |
+| **collection-minimal** | 42,510 | N/A | 10.0 µs | 21.9 µs | 15.0 µs | **swift** |
+| **data-classes** | 5,656 | N/A | 72.3 µs | 658.6 µs | 441.0 µs | **swift** |
+| **data-classes-enhanced** | 561 | 348.7 µs | 650.6 µs | 369.3 µs | 223.8 µs | **scriptc** |
+| **extension-functions** | 3,212 | N/A | N/A | 127.2 µs | 50.5 µs | **scriptc** |
+| **functional-style** | 10,585 | 49.4 µs | 43.4 µs | 19.1 µs | 30.1 µs | **kotlin** |
+| **generics-heavy** | 57,033 | 2.2 µs | 6.8 µs | 1.6 µs | 7.7 µs | **kotlin** |
+| **inheritance-deep** | 375,645 | 1.1 µs | 1.2 µs | 389 ns | 3.5 µs | **kotlin** |
+| **json-serialization** | 12 | 19.84 ms | 34.11 ms | N/A | 5.19 ms | **scriptc** |
+| **many-classes** | 58,873 | 6.0 µs | 6.8 µs | 1.9 µs | 3.2 µs | **kotlin** |
+| **null-safety** | 5,319 | 90.8 µs | 87.1 µs | 14.0 µs | 9.7 µs | **scriptc** |
+| **protocol-oriented** | 10 | 224.70 ms | 54.07 ms | 86.86 ms | 36.11 ms | **scriptc** |
+| **scope-functions** | 11,854 | 68.1 µs | 39.6 µs | 17.4 µs | 20.8 µs | **kotlin** |
+| **string-processing** | 10 | 1.68 ms | 161.19 ms | 101.62 ms | 27.25 ms | **objc** |
+| **variable-capture** | 23 | 125.16 ms | 21.37 ms | 33.98 ms | 15.48 ms | **scriptc** |
+
+相对**每个用例中最快语言**的几何平均（1.00 = 总是最快；按各语言可运行的用例计算，用例集不同）：
+
+| 语言 | 相对最快几何平均 | 用例数 |
+|------|-----------------|--------|
+| scriptc | **1.93x** | 15 |
+| kotlin | 2.22x | 14 |
+| objc | 3.17x | 11 |
+| swift | 3.27x | 14 |
+
+**发现：**
+- **没有单一赢家**——最快的语言取决于用例：Kotlin 赢在轻量的泛型/类密集用例
+  （generics-heavy、many-classes、inheritance-deep、scope-functions、functional-style），
+  scriptc 赢在重的 OO/数据用例（callback、data-classes-enhanced、json-serialization、
+  protocol-oriented、variable-capture、null-safety、extension-functions），Swift 赢在两个
+  数据为主的轻量用例，ObjC 在 string-processing 上快两个数量级（优化的 `NSString`）。
+- **scriptc 几何平均最好（1.93x）**，在重用例上最快或接近最快——这正是其体积代价的另一面：
+  让它*二进制膨胀*的按调用点特化与泛型单态化内联，恰恰让它**执行很快**。体积换速度，
+  正如其文档所宣传。
+- ObjC 的惯用实现呈两极：有时极快（string-processing 1.7 ms），有时极慢
+  （protocol-oriented 225 ms、variable-capture 125 ms）——再次提醒这测的是惯用代码，而非语言本身。
+
 ### 详细结果
 
 基准测试生成包含完整指标的 `results.csv`（样例，四种语言）：

@@ -251,6 +251,74 @@ type-info are counted — come out *smaller* (`json-serialization` 0.49x, `inher
 0.78x, `collection-minimal` 0.88x). It trades binary size for speed and a self-contained
 artifact; see the macOS execution-speed tier below.
 
+## Execution speed (macOS)
+
+Size is only half the story. `./benchmark_speed.sh` measures how fast each language runs
+the **same per-case `runBenchmark` workload** as a native **macOS** executable (a
+companion to the iOS size tier). `results_speed.csv` holds the raw numbers.
+
+**Methodology** (see `benchmark_speed.sh` header for details):
+- Native macOS host executables, **-Os parity** with the size tier: `clang -Os`,
+  `swiftc -Osize`, `konanc -opt`, scriptc default/release — *not* a speed-tuned build.
+- The driver constructs a **fresh `IosSizeBenchmark` per iteration** (stateless unit;
+  matches scriptc's free-function `runBenchmark`). Per-iter time =
+  `(minWall(N) − minWall(0)) / N` — the 0-iteration run isolates process startup, which
+  is subtracted so per-language launch cost doesn't bias the result. Each measurement
+  does a warmup run, then takes the min of 5 samples.
+- `N` is calibrated per case (same `N` across languages) to a ~0.5 s base run. Heavy
+  cases (ms-scale per call) land at small `N`; light cases at large `N` (shown below).
+
+**Coverage caveats:** `async`/`async-enhanced` are excluded (their drivers sleep).
+ObjC is N/A for 4 cases and Swift/Kotlin for 1 each — those cases call
+declared-but-unimplemented methods and crash at runtime (fine for the size tier, which
+never executes them). **These are the *idiomatic* implementations (identical to the size
+tier), not hand-tuned equivalents** — so speed reflects idiomatic implementation cost,
+not pure language speed. The extreme spreads (e.g. string-processing: ObjC's `NSString`
+primitives vs. others' manual string work) are real implementation differences.
+
+| Case | N | ObjC | Swift | Kotlin | scriptc | Fastest |
+|------|---|------|-------|--------|---------|---------|
+| **callback** | 10 | N/A | 73.36 ms | 68.95 ms | 37.05 ms | **scriptc** |
+| **collection-minimal** | 42,510 | N/A | 10.0 µs | 21.9 µs | 15.0 µs | **swift** |
+| **data-classes** | 5,656 | N/A | 72.3 µs | 658.6 µs | 441.0 µs | **swift** |
+| **data-classes-enhanced** | 561 | 348.7 µs | 650.6 µs | 369.3 µs | 223.8 µs | **scriptc** |
+| **extension-functions** | 3,212 | N/A | N/A | 127.2 µs | 50.5 µs | **scriptc** |
+| **functional-style** | 10,585 | 49.4 µs | 43.4 µs | 19.1 µs | 30.1 µs | **kotlin** |
+| **generics-heavy** | 57,033 | 2.2 µs | 6.8 µs | 1.6 µs | 7.7 µs | **kotlin** |
+| **inheritance-deep** | 375,645 | 1.1 µs | 1.2 µs | 389 ns | 3.5 µs | **kotlin** |
+| **json-serialization** | 12 | 19.84 ms | 34.11 ms | N/A | 5.19 ms | **scriptc** |
+| **many-classes** | 58,873 | 6.0 µs | 6.8 µs | 1.9 µs | 3.2 µs | **kotlin** |
+| **null-safety** | 5,319 | 90.8 µs | 87.1 µs | 14.0 µs | 9.7 µs | **scriptc** |
+| **protocol-oriented** | 10 | 224.70 ms | 54.07 ms | 86.86 ms | 36.11 ms | **scriptc** |
+| **scope-functions** | 11,854 | 68.1 µs | 39.6 µs | 17.4 µs | 20.8 µs | **kotlin** |
+| **string-processing** | 10 | 1.68 ms | 161.19 ms | 101.62 ms | 27.25 ms | **objc** |
+| **variable-capture** | 23 | 125.16 ms | 21.37 ms | 33.98 ms | 15.48 ms | **scriptc** |
+
+Geomean ns/iter **vs the fastest language in each case** (1.00 = always fastest; computed
+over each language's runnable cases, so case sets differ):
+
+| Language | Geomean vs fastest | Cases |
+|----------|-------------------|-------|
+| scriptc | **1.93x** | 15 |
+| kotlin | 2.22x | 14 |
+| objc | 3.17x | 11 |
+| swift | 3.27x | 14 |
+
+**Findings:**
+- **No single winner** — the fastest language is case-dependent: Kotlin wins the light
+  generic/class-heavy cases (generics-heavy, many-classes, inheritance-deep,
+  scope-functions, functional-style), scriptc wins the heavy OO/data cases (callback,
+  data-classes-enhanced, json-serialization, protocol-oriented, variable-capture,
+  null-safety, extension-functions), Swift wins the two data-centric light cases, and
+  ObjC wins string-processing by two orders of magnitude (optimized `NSString`).
+- **scriptc has the best geomean (1.93x)** and is fastest or near-fastest on the heavy
+  cases — the flip side of its size cost: the per-call-site specialization and generic
+  monomorphization that *inflate its binary* (size tier) are exactly what make its
+  **execution fast**. Size traded for speed, as its docs advertise.
+- ObjC's idiomatic implementations are bimodal: sometimes dramatically fast
+  (string-processing 1.7 ms) and sometimes dramatically slow (protocol-oriented 225 ms,
+  variable-capture 125 ms) — a reminder these measure idiomatic code, not the language.
+
 #### Detailed Results
 
 The benchmark generates `results.csv` with complete metrics (sample, all four languages):

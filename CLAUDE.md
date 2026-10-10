@@ -13,6 +13,15 @@ code, comparable to Kotlin Native's stdlib-in-uncounted-cache model); the runtim
 async-free graph, so `async`/`async-enhanced` are N/A (`SC4005`). Each `lib.ts` exports a
 top-level `runBenchmark(): void` as the DCE-preventing entry. See README for the table.
 
+**Execution-speed tier** (`benchmark_speed.sh` + `speed/`, output `results_speed.csv`):
+a separate dimension measuring how fast each language runs `runBenchmark` as a native
+**macOS** executable (not iOS). Drivers (`speed/main.{m,swift,kt}` + a codegen'd scriptc
+loop) construct a fresh `IosSizeBenchmark` per iteration; per-iter = `(wall(N) −
+wall(0))/N` with a warmup and min-of-5, N auto-calibrated per case. -Os parity with the
+size tier. `async`/`async-enhanced` excluded (sleep); cases whose idiomatic ObjC/Swift/
+Kotlin calls unimplemented methods crash at runtime and are recorded N/A. Speed reflects
+*idiomatic implementation* cost, not pure language speed.
+
 ## Core Commands
 
 ### Running Benchmarks
@@ -28,6 +37,7 @@ top-level `runBenchmark(): void` as the DCE-preventing entry. See README for the
 ./compile_swift.sh   # Swift compilation with worker + params
 ./compile_kotlin.sh  # Kotlin Native compilation with wrapper + dual params
 ./compile_scriptc.sh <case>  # scriptc (TS→native) iOS static lib; measures program.o
+./benchmark_speed.sh [case]  # macOS execution-speed tier (4 languages) -> results_speed.csv
 ```
 
 ### System Requirements
