@@ -4,17 +4,23 @@
 
 ### Overview
 
-This project provides a comprehensive benchmark for comparing binary size impact across **Kotlin Native**, **Swift**, and **Objective-C** implementations on iOS. It recreates exact Bazel compilation commands to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
+This project provides a comprehensive benchmark for comparing binary size impact across **Kotlin Native**, **Swift**, **Objective-C**, **scriptc** (an experimental TypeScript-to-native compiler), and **Zig** implementations on iOS. It recreates exact Bazel compilation commands to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
+
+**Zig** (0.16.0) is the **extreme control group** for both size and speed: a systems
+language with a *near-zero runtime* — manual memory, no reference counting, no GC, and no
+stdlib prebuild cache. It is the floor datapoint for where a language lands once every
+other runtime cost (RC/GC/metadata/dispatch) is stripped away. Toolchain:
+`~/.native/toolchains/zig-0.16.0/zig` (override via `$ZIG`).
 
 > **Design deep-dive:** [`doc/design-tradeoffs.md`](doc/design-tradeoffs.md) analyzes the
 > per-language design tradeoffs from both the size and execution-speed angles — why ObjC
-> stays smallest, why scriptc trades binary size for speed via inlining/monomorphization,
-> and the concurrency/artifact-form assumptions behind scriptc's runtime (currently in
-> Chinese).
+> stays smallest on most cases, why scriptc trades binary size for speed via inlining/
+> monomorphization, and the concurrency/artifact-form assumptions behind scriptc's runtime
+> (currently in Chinese).
 
 ### License and Attribution
 
-This project is licensed under the MIT License. All test case implementations in the `case/` directory were generated using **Claude AI** (https://claude.ai) and demonstrate equivalent functionality across the three languages for educational and comparison purposes.
+This project is licensed under the MIT License. All test case implementations in the `case/` directory were generated using **Claude AI** (https://claude.ai) and demonstrate equivalent functionality across the five languages for educational and comparison purposes.
 
 ### Environment Requirements
 
@@ -24,6 +30,7 @@ This project is licensed under the MIT License. All test case implementations in
 - **Apple Clang**: version 21.0.0 (clang-2100.1.1.101)
 - **iOS SDK**: 26.5
 - **Xcode**: 26.6 (build 17F113)
+- **Zig**: 0.16.0 (path `~/.native/toolchains/zig-0.16.0/zig`, override via `$ZIG`)
 
 > **Kotlin cache model note:** Kotlin Native 2.4.20 removed the manual per-library
 > `-Xadd-cache` prebuild protocol the original pipeline replayed. `compile_kotlin.sh`
@@ -46,7 +53,10 @@ xcrun --sdk iphoneos --show-sdk-version
 # 3. Verify bc calculator
 which bc
 
-# 4. Run all benchmarks
+# 4. Verify Zig 0.16.0 (override path via $ZIG)
+~/.native/toolchains/zig-0.16.0/zig version
+
+# 5. Run all benchmarks
 ./benchmark_all_cases.sh
 ```
 
@@ -163,43 +173,62 @@ public struct Example {
 
 ### Benchmark Results
 
-Our comprehensive testing with Kotlin Native 2.4.20, Swift 6.3.3, and Apple Clang 21.0.0 (Xcode 26.6, iOS SDK 26.5) reveals significant differences in binary size across languages and use cases.
+Our comprehensive testing with Kotlin Native 2.4.20, Swift 6.3.3, Apple Clang 21.0.0 (Xcode 26.6, iOS SDK 26.5), scriptc 0.2.7, and Zig 0.16.0 reveals significant differences in binary size across languages and use cases.
 
 #### Summary Table
 
-All sizes in bytes (final = TEXT×0.7 + DATA×0.2). scriptc measures the marginal user
-object `program.o` (see the scriptc tier section); `async`/`async-enhanced` are N/A for
-scriptc (`SC4005`).
+All sizes in bytes (final = TEXT×0.7 + DATA×0.2). scriptc and Zig both measure the
+marginal user object `program.o` (see their tier sections); `async`/`async-enhanced` are
+N/A for scriptc (`SC4005`) and for Zig (0.16 has no stable async/await).
 
-| Case | ObjC | Swift | Kotlin | scriptc | Best | Swift/ObjC | Kotlin/ObjC | scriptc/ObjC |
-|------|------|-------|--------|---------|------|-----------|------------|--------------|
-| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | **ObjC** | 2.62x | 2.49x | — |
-| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | **ObjC** | 3.24x | 2.73x | — |
-| **callback** | 47,163 | 58,821 | 97,688 | 98,194 | **ObjC** | 1.25x | 2.07x | 2.08x |
-| **collection-minimal** | 4,854 | 6,958 | 6,803 | 5,972 | **ObjC** | 1.43x | 1.40x | 1.23x |
-| **data-classes** | 24,588 | 115,725 | 91,197 | 130,563 | **ObjC** | 4.71x | 3.71x | 5.31x |
-| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | 34,088 | **ObjC** | 7.95x | 2.57x | 2.42x |
-| **extension-functions** | 28,204 | 32,898 | 47,819 | 104,889 | **ObjC** | 1.17x | 1.70x | 3.72x |
-| **functional-style** | 13,398 | 44,172 | 34,968 | 90,539 | **ObjC** | 3.30x | 2.61x | 6.76x |
-| **generics-heavy** | 11,572 | 29,855 | 20,542 | 38,551 | **ObjC** | 2.58x | 1.78x | 3.33x |
-| **inheritance-deep** | 8,926 | 15,309 | 33,458 | 26,095 | **ObjC** | 1.72x | 3.75x | 2.92x |
-| **json-serialization** | 14,037 | 45,667 | 47,782 | 23,391 | **ObjC** | 3.25x | 3.40x | 1.67x |
-| **many-classes** | 17,672 | 18,066 | 23,483 | 36,580 | **ObjC** | 1.02x | 1.33x | 2.07x |
-| **null-safety** | 23,079 | 33,955 | 26,822 | 49,211 | **ObjC** | 1.47x | 1.16x | 2.13x |
-| **protocol-oriented** | 12,289 | 28,820 | 21,807 | 45,710 | **ObjC** | 2.35x | 1.77x | 3.72x |
-| **scope-functions** | 29,879 | 46,200 | 56,063 | 97,107 | **ObjC** | 1.55x | 1.88x | 3.25x |
-| **string-processing** | 17,366 | 42,131 | 27,238 | 41,320 | **ObjC** | 2.43x | 1.57x | 2.38x |
-| **variable-capture** | 8,569 | 16,392 | 13,484 | 16,275 | **ObjC** | 1.91x | 1.57x | 1.90x |
+| Case | ObjC | Swift | Kotlin | scriptc | Zig | Best | Swift/ObjC | Kotlin/ObjC | scriptc/ObjC | Zig/ObjC |
+|------|------|-------|--------|---------|-----|------|-----------|------------|--------------|----------|
+| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | N/A² | **ObjC** | 2.62x | 2.49x | — | — |
+| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | N/A² | **ObjC** | 3.24x | 2.73x | — | — |
+| **callback** | 47,163 | 58,821 | 97,688 | 98,194 | **25,235** | **Zig** | 1.25x | 2.07x | 2.08x | 0.54x |
+| **collection-minimal** | 4,854 | 6,958 | 6,803 | 5,972 | 8,224 | **ObjC** | 1.43x | 1.40x | 1.23x | 1.69x |
+| **data-classes** | 24,588 | 115,725 | 91,197 | 130,563 | 42,424 | **ObjC** | 4.71x | 3.71x | 5.31x | 1.73x |
+| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | 34,088 | 16,074 | **ObjC** | 7.95x | 2.57x | 2.42x | 1.14x |
+| **extension-functions** | 28,204 | 32,898 | 47,819 | 104,889 | 39,846 | **ObjC** | 1.17x | 1.70x | 3.72x | 1.41x |
+| **functional-style** | 13,398 | 44,172 | 34,968 | 90,539 | 23,771 | **ObjC** | 3.30x | 2.61x | 6.76x | 1.77x |
+| **generics-heavy** | 11,572 | 29,855 | 20,542 | 38,551 | **5,976** | **Zig** | 2.58x | 1.78x | 3.33x | 0.52x |
+| **inheritance-deep** | 8,926 | 15,309 | 33,458 | 26,095 | **650**³ | **Zig**³ | 1.72x | 3.75x | 2.92x | 0.07x |
+| **json-serialization** | 14,037 | 45,667 | 47,782 | 23,391 | 59,743 | **ObjC** | 3.25x | 3.40x | 1.67x | 4.26x |
+| **many-classes** | 17,672 | 18,066 | 23,483 | 36,580 | **427**³ | **Zig**³ | 1.02x | 1.33x | 2.07x | 0.02x |
+| **null-safety** | 23,079 | 33,955 | 26,822 | 49,211 | 33,656 | **ObjC** | 1.47x | 1.16x | 2.13x | 1.46x |
+| **protocol-oriented** | 12,289 | 28,820 | 21,807 | 45,710 | 17,624 | **ObjC** | 2.35x | 1.77x | 3.72x | 1.43x |
+| **scope-functions** | 29,879 | 46,200 | 56,063 | 97,107 | **22,520** | **Zig** | 1.55x | 1.88x | 3.25x | 0.75x |
+| **string-processing** | 17,366 | 42,131 | 27,238 | 41,320 | 24,693 | **ObjC** | 2.43x | 1.57x | 2.38x | 1.42x |
+| **variable-capture** | 8,569 | 16,392 | 13,484 | 16,275 | 9,608 | **ObjC** | 1.91x | 1.57x | 1.90x | 1.12x |
 
-¹ async-free module graph required by scriptc `--lib` mode (`SC4005`).
+¹ async-free module graph required by scriptc `--lib` mode (`SC4005`).  ² Zig 0.16 has no
+stable async/await.  ³ `inheritance-deep` and `many-classes` are comptime constant-folded
+away under ReleaseSmall — see the honesty caveat below; these are not real dispatch costs.
 
 #### Key Findings
 
-**🏆 Objective-C consistently produces the smallest binaries** across all test cases, making it the clear winner for size-critical applications.
+**🏆 Objective-C produces the smallest binaries on most cases, but no longer universally.**
+ObjC wins **10 of the 15 runnable cases**, making it the default pick for size-critical
+work. **Zig wins the other 5** — callback (0.54x), generics-heavy (0.52x), scope-functions
+(0.75x), and the two comptime-folded cases inheritance-deep (0.07x) and many-classes
+(0.02x). On data/json/string-heavy cases Zig lands mid-pack to large (json-serialization
+4.26x ObjC — `std.json` is pulled in whole) because the real work can't be folded and Zig
+has no shared stdlib to offload to.
+
+> **⚠️ Honesty caveat — comptime constant-folding.** Zig's `inheritance-deep` (650 B) and
+> `many-classes` (427 B) are near-empty objects, **not** evidence that Zig does
+> polymorphism 40x smaller. The idiomatic Zig here is an `enum` + `switch` whose branches
+> return constants over comptime-known inputs, which ReleaseSmall **constant-folds away
+> entirely**. The other languages retain runtime dispatch and type metadata and cannot
+> fold. Read these two rows as "the optimizer erased a comptime-knowable workload," not as
+> steady-state dispatch cost. (The sub-40 ns speed numbers for the same two cases confirm
+> it — see the speed tier.)
 
 **📊 Language Performance Patterns:**
 - **Swift penalty ranges from 1.02x to 7.95x** larger than Objective-C
 - **Kotlin penalty ranges from 1.16x to 3.75x** larger than Objective-C  
+- **Zig vs ObjC ranges from 0.02x (folded) to 4.26x** — smaller than ObjC on its 5 wins,
+  larger on data/json/string-heavy cases with no shared stdlib floor to offload to
 - **Worst Swift cases**: data-classes-enhanced (7.95x), data-classes (4.71x)
 - **Best Swift cases**: many-classes (1.02x), extension-functions (1.17x)
 
@@ -257,6 +286,45 @@ type-info are counted — come out *smaller* (`json-serialization` 0.49x, `inher
 0.78x, `collection-minimal` 0.88x). It trades binary size for speed and a self-contained
 artifact; see the macOS execution-speed tier below.
 
+### Zig (systems language) tier
+
+A fifth implementation, `case/*/lib.zig`, is compiled with **Zig 0.16.0** (`compile_zig.sh`,
+path `~/.native/toolchains/zig-0.16.0/zig`, override via `$ZIG`) as the **extreme control
+group**: a systems language with manual memory, no reference counting, no GC, and no
+stdlib prebuild cache.
+
+**What is measured.** `zig build-obj lib.zig -target aarch64-ios -O ReleaseSmall` emits
+**one relocatable `program.o`**. Unlike scriptc there is **no separate shared runtime
+floor** — Zig has no RC/GC/stdlib cache, so everything the case uses (allocator shims,
+panic handler, monomorphized generics/containers) is inlined into that single object. The
+whole object *is* the user-marginal cost: the honest floor of a near-zero-runtime systems
+language. DCE root: `export fn bench_run() void { runBenchmark(); }`.
+
+**Idiomatic, not 1:1.** Polymorphism uses tagged unions + `switch`, generics use comptime
+`fn(comptime T: type) type`, and lambdas use explicit closure-structs or `*const fn`
+pointers (Zig has no closures). These are genuine structural differences, documented, not
+hand-tuned equivalents.
+
+**async is N/A.** Zig 0.16 has no stable async/await, so `async`/`async-enhanced` cannot
+be built for this tier (parallels scriptc's `SC4005`).
+
+> **⚠️ Honesty caveat (size).** `inheritance-deep` (650 B) and `many-classes` (427 B) are
+> near-empty because their idiomatic Zig — an `enum`/`switch` returning constants over
+> comptime-known inputs — is **constant-folded away under ReleaseSmall**. These reflect the
+> optimizer erasing a comptime-knowable workload, not steady-state dispatch cost. Do not
+> read Zig as "40x smaller at polymorphism."
+
+**Extreme-control-group framing (vs scriptc).** Both scriptc and Zig inline/monomorphize
+into the user object and have small-to-no runtime, but Zig goes further — manual memory, no
+RC at all, no GC. Zig is therefore the floor datapoint: where a near-zero-runtime systems
+language lands once every other language's runtime cost is stripped away. The gap between
+Zig and the rest *is* the runtime tax (RC/GC/metadata/dispatch) the others pay.
+
+**Commands.** `./compile_zig.sh <case>` builds the iOS size tier (prints `TEXT DATA`); Zig
+participates in `./benchmark_speed.sh` automatically.
+
+Zig's per-case numbers and `Zig/ObjC` ratios are in the Summary Table above.
+
 ## Execution speed (macOS)
 
 Size is only half the story. `./benchmark_speed.sh` measures how fast each language runs
@@ -265,12 +333,16 @@ companion to the iOS size tier). `results_speed.csv` holds the raw numbers.
 
 **Methodology** (see `benchmark_speed.sh` header for details):
 - Native macOS host executables, **-Os parity** with the size tier: `clang -Os`,
-  `swiftc -Osize`, `konanc -opt`, scriptc default/release — *not* a speed-tuned build.
+  `swiftc -Osize`, `konanc -opt`, scriptc default/release, Zig `-O ReleaseSmall` — *not* a
+  speed-tuned build.
 - The driver constructs a **fresh `IosSizeBenchmark` per iteration** (stateless unit;
   matches scriptc's free-function `runBenchmark`). Per-iter time =
   `(minWall(N) − minWall(0)) / N` — the 0-iteration run isolates process startup, which
   is subtracted so per-language launch cost doesn't bias the result. Each measurement
-  does a warmup run, then takes the min of 5 samples.
+  does a warmup run, then takes the min of 5 samples. Zig uses the **same
+  baseline-subtraction**: with no `argv` API in 0.16, the iteration count is **baked in**
+  at build time (built at 0 and N), per-iter = `(wall(N) − wall(0)) / N`, exactly like
+  scriptc.
 - `N` is calibrated per case (same `N` across languages) to a ~0.5 s base run. Heavy
   cases (ms-scale per call) land at small `N`; light cases at large `N` (shown below).
 
@@ -283,60 +355,79 @@ kotlinx-serialization compiler plugin plus the macOS `serialization-core`/`-json
 implementations (identical to the size tier), not hand-tuned equivalents** — so speed
 reflects idiomatic implementation cost, not pure language speed. The extreme spreads
 (e.g. string-processing: ObjC's `NSString` primitives vs. others' manual string work)
-are real implementation differences.
+are real implementation differences. Zig participates with its baked-iteration driver
+(see methodology); `async`/`async-enhanced` are N/A for Zig as well (no stable 0.16
+async/await).
 
-| Case | N | ObjC | Swift | Kotlin | scriptc | Fastest |
-|------|---|------|-------|--------|---------|---------|
-| **callback** | 10 | N/A | 73.36 ms | 68.95 ms | 37.05 ms | **scriptc** |
-| **collection-minimal** | 42,510 | N/A | 10.0 µs | 21.9 µs | 15.0 µs | **swift** |
-| **data-classes** | 5,656 | N/A | 72.3 µs | 658.6 µs | 441.0 µs | **swift** |
-| **data-classes-enhanced** | 561 | 348.7 µs | 650.6 µs | 369.3 µs | 223.8 µs | **scriptc** |
-| **extension-functions** | 3,212 | N/A | N/A | 127.2 µs | 50.5 µs | **scriptc** |
-| **functional-style** | 10,585 | 49.4 µs | 43.4 µs | 19.1 µs | 30.1 µs | **kotlin** |
-| **generics-heavy** | 57,033 | 2.2 µs | 6.8 µs | 1.6 µs | 7.7 µs | **kotlin** |
-| **inheritance-deep** | 375,645 | 1.1 µs | 1.2 µs | 389 ns | 3.5 µs | **kotlin** |
-| **json-serialization** | 12 | 19.84 ms | 34.11 ms | 18.50 ms | 5.19 ms | **scriptc** |
-| **many-classes** | 58,873 | 6.0 µs | 6.8 µs | 1.9 µs | 3.2 µs | **kotlin** |
-| **null-safety** | 5,319 | 90.8 µs | 87.1 µs | 14.0 µs | 9.7 µs | **scriptc** |
-| **protocol-oriented** | 10 | 224.70 ms | 54.07 ms | 86.86 ms | 36.11 ms | **scriptc** |
-| **scope-functions** | 11,854 | 68.1 µs | 39.6 µs | 17.4 µs | 20.8 µs | **kotlin** |
-| **string-processing** | 10 | 1.68 ms | 161.19 ms | 101.62 ms | 27.25 ms | **objc** |
-| **variable-capture** | 23 | 125.16 ms | 21.37 ms | 33.98 ms | 15.48 ms | **scriptc** |
+| Case | N | ObjC | Swift | Kotlin | scriptc | Zig | Fastest |
+|------|---|------|-------|--------|---------|-----|---------|
+| **callback** | 10 | N/A | 104.76 ms | 108.55 ms | 71.06 ms | 38.41 ms | **Zig** |
+| **collection-minimal** | 32,627 | N/A | 15.0 µs | 30.0 µs | 18.6 µs | 10.8 µs | **Zig** |
+| **data-classes** | 4,253 | N/A | 130.1 µs | 949.3 µs | 581.7 µs | 344.0 µs | **Swift** |
+| **data-classes-enhanced** | 557 | 442.7 µs | 856.5 µs | 488.0 µs | 296.1 µs | 149.4 µs | **Zig** |
+| **extension-functions** | 947 | N/A | N/A | 260.6 µs | 89.9 µs | 27.5 µs | **Zig** |
+| **functional-style** | 5,915 | 53.8 µs | 47.5 µs | 19.9 µs | 33.0 µs | 8.1 µs | **Zig** |
+| **generics-heavy** | 39,412 | 2.4 µs | 10.0 µs | 2.0 µs | 8.2 µs | 1.77 µs | **Zig** |
+| **inheritance-deep** | 213,151 | 1.2 µs | 1.4 µs | 436 ns | 3.4 µs | 34.8 ns³ | **Zig**³ |
+| **json-serialization** | 14 | 22.01 ms | 47.07 ms | 23.33 ms | 5.22 ms | 6.66 ms | **scriptc** |
+| **many-classes** | 58,054 | 6.9 µs | 8.1 µs | 2.3 µs | 3.7 µs | 39.9 ns³ | **Zig**³ |
+| **null-safety** | 4,809 | 98.8 µs | 83.8 µs | 13.5 µs | 10.0 µs | 3.2 µs | **Zig** |
+| **protocol-oriented** | 10 | 249.30 ms | 53.78 ms | 112.05 ms | 33.42 ms | 51.40 ms | **scriptc** |
+| **scope-functions** | 7,015 | 77.9 µs | 40.2 µs | 17.2 µs | 23.6 µs | 12.3 µs | **Zig** |
+| **string-processing** | 10 | 1.95 ms | 161.71 ms | 108.64 ms | 28.71 ms | 12.60 ms | **ObjC** |
+| **variable-capture** | 15 | 130.06 ms | 24.36 ms | 34.23 ms | 17.51 ms | 1.42 ms | **Zig** |
+
+³ `inheritance-deep` (34.8 ns) and `many-classes` (39.9 ns) are comptime constant-folded —
+empty-loop territory, not real dispatch cost. See the honesty caveat below.
 
 Geomean ns/iter **vs the fastest language in each case** (1.00 = always fastest; computed
 over each language's runnable cases, so case sets differ):
 
 | Language | Geomean vs fastest | Cases |
 |----------|-------------------|-------|
-| scriptc | **1.93x** | 15 |
-| kotlin | 2.29x | 15 |
-| objc | 3.17x | 11 |
-| swift | 3.27x | 14 |
+| zig | **1.26x** | 15 |
+| scriptc | 4.81x | 15 |
+| kotlin | 5.96x | 15 |
+| swift | 8.51x | 14 |
+| objc | 9.94x | 11 |
 
 **Findings:**
-- **No single winner** — the fastest language is case-dependent: Kotlin wins the light
-  generic/class-heavy cases (generics-heavy, many-classes, inheritance-deep,
-  scope-functions, functional-style), scriptc wins the heavy OO/data cases (callback,
-  data-classes-enhanced, json-serialization, protocol-oriented, variable-capture,
-  null-safety, extension-functions), Swift wins the two data-centric light cases, and
-  ObjC wins string-processing by two orders of magnitude (optimized `NSString`).
-- **scriptc has the best geomean (1.93x)** and is fastest or near-fastest on the heavy
-  cases — the flip side of its size cost: the per-call-site specialization and generic
-  monomorphization that *inflate its binary* (size tier) are exactly what make its
-  **execution fast**. Size traded for speed, as its docs advertise.
+- **Zig is the overall speed leader** — geomean **1.26x** vs the fastest-in-case, fastest
+  on **11 of 15** cases. Its comptime monomorphization plus manual memory (no RC/GC) strip
+  the runtime tax the others pay; the gap between Zig and the rest *is* that tax. It loses
+  four: data-classes (to Swift), string-processing (to ObjC), and json-serialization +
+  protocol-oriented (both to scriptc, whose per-call-site specialization edges Zig on those
+  two heavy indirect-dispatch cases).
+- **scriptc's old crown is superseded.** The previous run called scriptc fastest at 1.93x;
+  with Zig taking most cases, scriptc now sits at **4.81x** geomean, still fastest on the
+  two heavy indirect-dispatch cases above. Its per-call-site specialization and generic
+  monomorphization — the same mechanisms that *inflate its binary* (size tier) — are what
+  keep its execution fast.
+
+  > **⚠️ Honesty caveat (speed).** Zig's `inheritance-deep` (34.8 ns) and `many-classes`
+  > (39.9 ns) sit in empty-loop territory because the comptime-knowable `enum`/`switch`
+  > workload is **constant-folded away under ReleaseSmall** — the same erasure that makes
+  > these two size rows near-empty (650 B / 427 B). These are *not* steady-state dispatch
+  > numbers; the other languages retain runtime dispatch and cannot fold. Do not read Zig
+  > as doing polymorphism 40x faster.
+- **Size↔speed is one coin.** Zig reinforces the thesis: comptime monomorphization + manual
+  memory make it broadly fastest *and* small, and where that same comptime evaluation can
+  see the whole workload (inheritance-deep, many-classes) it erases the code entirely —
+  tiny size and empty runtime, same mechanism on both axes.
 - ObjC's idiomatic implementations are bimodal: sometimes dramatically fast
-  (string-processing 1.7 ms) and sometimes dramatically slow (protocol-oriented 225 ms,
-  variable-capture 125 ms) — a reminder these measure idiomatic code, not the language.
+  (string-processing 1.95 ms) and sometimes dramatically slow (protocol-oriented 249 ms,
+  variable-capture 130 ms) — a reminder these measure idiomatic code, not the language.
 
 #### Detailed Results
 
-The benchmark generates `results.csv` with complete metrics (sample, all four languages):
+The benchmark generates `results.csv` with complete metrics (sample, all five languages):
 ```csv
 case,variant,language,success,text_size,data_size,final_size,lines_of_code
 collection-minimal,-Os,objc,true,5999,3276,4854,212
 collection-minimal,-Os,swift,true,9702,832,6958,168
 collection-minimal,-Os,kotlin,true,8839,3080,6803,154
 collection-minimal,-Os,scriptc,true,8236,1033,5972,192
+collection-minimal,-Os,zig,true,11705,152,8224,149
 json-serialization,-Os,objc,true,17281,9700,14037,376
 json-serialization,-Os,swift,true,61771,12136,45667,247
 json-serialization,-Os,kotlin,true,61773,22704,47782,207
@@ -345,5 +436,5 @@ async,-Os,objc,true,104617,21820,77596,2122
 async,-Os,swift,true,284694,20248,203335,1452
 async,-Os,kotlin,true,238147,132976,193298,1005
 async,-Os,scriptc,false,0,0,0,1117
-...  # full 4-language matrix (17 cases) in results.csv
+...  # full 5-language matrix (17 cases) in results.csv
 ```

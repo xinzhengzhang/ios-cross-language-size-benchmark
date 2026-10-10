@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is an iOS Size Benchmark project that compares code size impact across Kotlin Native, Swift, Objective-C, and **scriptc** (an experimental TypeScript-to-native compiler) implementations. It recreates exact Bazel compilation commands extracted from `bazel aquery` to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
+This is an iOS Size Benchmark project that compares code size impact across Kotlin Native, Swift, Objective-C, **scriptc** (an experimental TypeScript-to-native compiler), and **Zig** implementations. It recreates exact Bazel compilation commands extracted from `bazel aquery` to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
 
 **scriptc tier** (`case/*/lib.ts`, built by `compile_scriptc.sh`): builds an iOS arm64
 static library and measures only the single user object `program.o` (the marginal user
@@ -13,10 +13,28 @@ code, comparable to Kotlin Native's stdlib-in-uncounted-cache model); the runtim
 async-free graph, so `async`/`async-enhanced` are N/A (`SC4005`). Each `lib.ts` exports a
 top-level `runBenchmark(): void` as the DCE-preventing entry. See README for the table.
 
+**Zig tier** (`case/*/lib.zig`, built by `compile_zig.sh`, toolchain `$ZIG`, default
+`~/.native/toolchains/zig-0.16.0/zig`): the **extreme control group** for both size and
+speed — a systems language with a near-zero runtime (manual memory, no reference counting,
+no GC, no stdlib prebuild cache). `zig build-obj lib.zig -target aarch64-ios -O
+ReleaseSmall` emits ONE relocatable `program.o`; unlike scriptc there is **no separate
+shared runtime floor** (everything the case uses is inlined/monomorphized into that one
+object), so the whole object *is* the user-marginal cost. DCE root: `export fn
+bench_run() void { runBenchmark(); }`. Ports are idiomatic, not 1:1 (tagged unions +
+`switch` for polymorphism, comptime `fn(comptime T: type) type` generics, explicit
+closure-structs / `*const fn` pointers for lambdas). `async`/`async-enhanced` are N/A
+(Zig 0.16 has no stable async/await). **Honesty caveat**: `inheritance-deep` (650 B,
+34.8 ns) and `many-classes` (427 B, 39.9 ns) are near-empty because the idiomatic Zig —
+enum + `switch` branches returning constants over comptime-known inputs — is
+constant-folded away under ReleaseSmall; those numbers reflect the optimizer erasing a
+comptime-knowable workload, NOT steady-state dispatch cost. Findings: ObjC no longer
+universally smallest (wins 10/15, Zig wins 5); Zig is the overall speed leader (geomean
+1.26x, fastest 11/15).
+
 **Execution-speed tier** (`benchmark_speed.sh` + `speed/`, output `results_speed.csv`):
 a separate dimension measuring how fast each language runs `runBenchmark` as a native
-**macOS** executable (not iOS). Drivers (`speed/main.{m,swift,kt}` + a codegen'd scriptc
-loop) construct a fresh `IosSizeBenchmark` per iteration; per-iter = `(wall(N) −
+**macOS** executable (not iOS). Drivers (`speed/main.{m,swift,kt}` + codegen'd scriptc and
+Zig loops) construct a fresh `IosSizeBenchmark` per iteration; per-iter = `(wall(N) −
 wall(0))/N` with a warmup and min-of-5, N auto-calibrated per case. -Os parity with the
 size tier. `async`/`async-enhanced` excluded (sleep); cases whose idiomatic ObjC/Swift/
 Kotlin calls unimplemented methods crash at runtime and are recorded N/A. Speed reflects
@@ -46,7 +64,8 @@ depends only on stdlib, so no atomicfu/coroutines klibs are required for this ca
 ./compile_swift.sh   # Swift compilation with worker + params
 ./compile_kotlin.sh  # Kotlin Native compilation with wrapper + dual params
 ./compile_scriptc.sh <case>  # scriptc (TS→native) iOS static lib; measures program.o
-./benchmark_speed.sh [case]  # macOS execution-speed tier (4 languages) -> results_speed.csv
+./compile_zig.sh <case>      # Zig iOS relocatable program.o; measures TEXT/DATA
+./benchmark_speed.sh [case]  # macOS execution-speed tier (5 languages) -> results_speed.csv
 ```
 
 ### System Requirements
@@ -80,6 +99,15 @@ xcode-select --install
 xcrun swift --version                    # Should show Swift 5.9+
 xcrun --sdk iphoneos --show-sdk-version  # Should show iOS SDK 15.0+
 xcrun --sdk iphoneos --show-sdk-path     # Verify iOS SDK path exists
+```
+
+#### Zig (tested with 0.16.0)
+```bash
+# Default toolchain path (override via $ZIG)
+export ZIG=$HOME/.native/toolchains/zig-0.16.0/zig
+
+# Verify version
+$ZIG version   # Should show 0.16.0
 ```
 
 #### Additional Tools
@@ -135,7 +163,7 @@ xcrun --sdk iphoneos --show-sdk-path  # Should return valid path
 ## Architecture
 
 ### Directory Structure
-- `case/*/` - Test cases with equivalent implementations (lib.kt, lib.swift, lib.m, lib.ts)
+- `case/*/` - Test cases with equivalent implementations (lib.kt, lib.swift, lib.m, lib.ts, lib.zig)
 - `bazel-workspace/` - Exact recreation of Bazel's build directory structure
 - `results.csv` - Generated benchmark results with size metrics
 

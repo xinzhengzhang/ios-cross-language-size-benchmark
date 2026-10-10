@@ -42,6 +42,7 @@ bazel-workspace/examples/ios-size-benchmark/src/iosMain/swift/lib.swift
 backup_original_sources/
 node_modules/
 .scriptc/
+**/.zig/
 *.lib.a
 *.lib.ll
 .speedbuild/
