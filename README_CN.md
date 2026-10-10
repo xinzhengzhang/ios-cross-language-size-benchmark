@@ -4,6 +4,10 @@
 
 本项目提供了一个全面的基准测试，用于比较 **Kotlin Native**、**Swift** 和 **Objective-C** 在 iOS 平台上的二进制大小影响。通过精确重现 Bazel 编译命令，测量和比较不同语言实现的等效功能的编译后二进制大小。
 
+> **设计深读：** [`doc/design-tradeoffs.md`](doc/design-tradeoffs.md) 从体积与执行速度两个
+> 维度分析四种语言的设计取舍——为什么 ObjC 体积恒定最小、scriptc 如何用内联/单态化以体积换
+> 速度，以及 scriptc 运行时背后的并发模型与产物形态前提。
+
 ## 许可证与声明
 
 本项目采用 MIT 许可证发布。`case/` 目录中的所有测试用例实现均由 **Claude AI** (https://claude.ai) 生成，用于展示三种语言的等效功能实现，仅供教育和比较用途。

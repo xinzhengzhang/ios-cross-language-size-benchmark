@@ -6,6 +6,12 @@
 
 This project provides a comprehensive benchmark for comparing binary size impact across **Kotlin Native**, **Swift**, and **Objective-C** implementations on iOS. It recreates exact Bazel compilation commands to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
 
+> **Design deep-dive:** [`doc/design-tradeoffs.md`](doc/design-tradeoffs.md) analyzes the
+> per-language design tradeoffs from both the size and execution-speed angles — why ObjC
+> stays smallest, why scriptc trades binary size for speed via inlining/monomorphization,
+> and the concurrency/artifact-form assumptions behind scriptc's runtime (currently in
+> Chinese).
+
 ### License and Attribution
 
 This project is licensed under the MIT License. All test case implementations in the `case/` directory were generated using **Claude AI** (https://claude.ai) and demonstrate equivalent functionality across the three languages for educational and comparison purposes.
