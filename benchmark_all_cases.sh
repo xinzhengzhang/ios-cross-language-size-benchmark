@@ -56,6 +56,7 @@ count_lines_of_code() {
 if [ -z "$KOTLIN_NATIVE_DIST" ]; then
     # Try to find Kotlin Native in common locations
     KOTLIN_CANDIDATES=(
+        "/Users/snorlax/.konan/kotlin-native-prebuilt-macos-aarch64-2.4.20"
         "/Users/snorlax/.konan/kotlin-native-prebuilt-macos-aarch64-2.2.0"
         "/Users/snorlax/.konan/kotlin-native-prebuilt-macos-aarch64-2.1.10"
         "/usr/local/opt/kotlin-native"

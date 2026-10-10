@@ -10,9 +10,9 @@ set -e
 
 # Set environment variables exactly as bazel does
 export APPLE_SDK_PLATFORM=iPhoneOS
-export APPLE_SDK_VERSION_OVERRIDE=18.5
+export APPLE_SDK_VERSION_OVERRIDE=26.5
 export PATH=/bin:/usr/bin:/usr/local/bin
-export XCODE_VERSION_OVERRIDE=16.4.0.16F6
+export XCODE_VERSION_OVERRIDE=26.6.0.17F113
 
 # Create output directories
 mkdir -p bazel-workspace/bazel-out/ios_arm64-opt-ios-arm64-min15.0-applebin_ios-ST-659a08be7a88/bin/examples/ios-size-benchmark/_objs/swift_library
@@ -34,8 +34,8 @@ echo "Using params file: $TEMP_PARAMS"
 # Execute the exact bazel command
 exec env - \
     APPLE_SDK_PLATFORM=iPhoneOS \
-    APPLE_SDK_VERSION_OVERRIDE=18.5 \
+    APPLE_SDK_VERSION_OVERRIDE=26.5 \
     PATH=/bin:/usr/bin:/usr/local/bin \
-    XCODE_VERSION_OVERRIDE=16.4.0.16F6 \
+    XCODE_VERSION_OVERRIDE=26.6.0.17F113 \
   bazel-workspace/bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/rules_swift~/tools/worker \
     @"$TEMP_PARAMS"

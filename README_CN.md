@@ -11,17 +11,24 @@
 ## 环境要求
 
 ### 当前测试环境
-- **Kotlin Native**: 2.2.20（最低要求版本）
-- **Swift**: Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)
-- **swift-driver**: version 1.120.5  
-- **Apple Clang**: version 17.0.0 (clang-1700.0.13.5)
-- **iOS SDK**: 15.0+（使用 iOS 18.5 测试）
-- **Xcode**: 16.4.0.16F6
+- **Kotlin Native**: 2.4.20
+- **Swift**: Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
+- **Apple Clang**: version 21.0.0 (clang-2100.1.1.101)
+- **iOS SDK**: 26.5
+- **Xcode**: 26.6（build 17F113）
+
+> **Kotlin 缓存模型说明：** Kotlin Native 2.4.20 移除了原管道逐字复现的「手动逐库
+> `-Xadd-cache` 预构建」协议。`compile_kotlin.sh` 现改用 konanc 的 auto-cache 基于
+> 2.4.20 发行版构建用户库的 static cache——测量的仍是同一产物
+> （`libexamples_…library-cache.a`，用 `xcrun size` 测量），仅依赖缓存机制不同。
+> 一个副作用：2.4.20 的 auto-cache 要求所有依赖都被缓存，因此 `json-serialization`
+> 现在把用户实例化的序列化器也计入了被测对象（2.2 下这些是外部引用、不计入），
+> 这就是其 Kotlin 数字上升的原因。
 
 ### 环境配置
 ```bash
-# 1. 安装 Kotlin Native (2.2.20+)
-export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-macos-aarch64-2.2.20
+# 1. 安装 Kotlin Native (2.4.20)
+export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-prebuilt-macos-aarch64-2.4.20
 
 # 2. 验证 Swift/Xcode 安装
 xcrun swift --version
@@ -217,29 +224,29 @@ public struct Example {
 
 ## 基准测试结果
 
-使用 Kotlin Native 2.2.20、Swift 6.1.2 和 Apple Clang 17.0.0 进行的全面测试显示，不同语言和使用场景下的二进制大小存在显著差异。
+使用 Kotlin Native 2.4.20、Swift 6.3.3 和 Apple Clang 21.0.0（Xcode 26.6，iOS SDK 26.5）进行的全面测试显示，不同语言和使用场景下的二进制大小存在显著差异。
 
 ### 结果汇总表
 
 | 测试用例 | Objective-C (字节) | Swift (字节) | Kotlin (字节) | 最优语言 | Swift vs ObjC | Kotlin vs ObjC |
 |------|-------|-------|--------|-------------|-------------|-------------|
-| **async** | 76,347 | 162,332 | 163,086 | **Objective-C** | 2.13x | 2.14x |
-| **async-enhanced** | 24,538 | 86,128 | 57,952 | **Objective-C** | 3.51x | 2.36x |
-| **callback** | 46,104 | 60,846 | 90,173 | **Objective-C** | 1.32x | 1.96x |
-| **collection-minimal** | 4,793 | 6,974 | 6,809 | **Objective-C** | 1.46x | 1.42x |
-| **data-classes** | 23,466 | 126,322 | 88,722 | **Objective-C** | 5.38x | 3.78x |
-| **data-classes-enhanced** | 13,325 | 118,380 | 36,283 | **Objective-C** | 8.88x | 2.72x |
-| **extension-functions** | 27,639 | 34,333 | 45,784 | **Objective-C** | 1.24x | 1.66x |
-| **functional-style** | 13,182 | 44,550 | 29,721 | **Objective-C** | 3.38x | 2.25x |
-| **generics-heavy** | 11,119 | 31,246 | 18,534 | **Objective-C** | 2.81x | 1.67x |
-| **inheritance-deep** | 8,481 | 15,374 | 31,501 | **Objective-C** | 1.81x | 3.71x |
-| **json-serialization** | 13,306 | 46,498 | 20,190 | **Objective-C** | 3.49x | 1.52x |
-| **many-classes** | 17,036 | 18,055 | 23,646 | **Objective-C** | 1.06x | 1.39x |
-| **null-safety** | 21,990 | 34,190 | 25,593 | **Objective-C** | 1.55x | 1.16x |
-| **protocol-oriented** | 12,286 | 29,105 | 21,754 | **Objective-C** | 2.37x | 1.77x |
-| **scope-functions** | 28,759 | 46,948 | 54,803 | **Objective-C** | 1.63x | 1.91x |
-| **string-processing** | 17,223 | 44,030 | 26,077 | **Objective-C** | 2.56x | 1.51x |
-| **variable-capture** | 8,457 | 16,289 | 13,134 | **Objective-C** | 1.93x | 1.55x |
+| **async** | 77,596 | 203,335 | 193,298 | **Objective-C** | 2.62x | 2.49x |
+| **async-enhanced** | 25,089 | 81,174 | 68,407 | **Objective-C** | 3.24x | 2.73x |
+| **callback** | 47,163 | 58,821 | 97,688 | **Objective-C** | 1.25x | 2.07x |
+| **collection-minimal** | 4,854 | 6,958 | 6,803 | **Objective-C** | 1.43x | 1.40x |
+| **data-classes** | 24,588 | 115,725 | 91,197 | **Objective-C** | 4.71x | 3.71x |
+| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | **Objective-C** | 7.95x | 2.57x |
+| **extension-functions** | 28,204 | 32,898 | 47,819 | **Objective-C** | 1.17x | 1.70x |
+| **functional-style** | 13,398 | 44,172 | 34,968 | **Objective-C** | 3.30x | 2.61x |
+| **generics-heavy** | 11,572 | 29,855 | 20,542 | **Objective-C** | 2.58x | 1.78x |
+| **inheritance-deep** | 8,926 | 15,309 | 33,458 | **Objective-C** | 1.72x | 3.75x |
+| **json-serialization** | 14,037 | 45,667 | 47,782 | **Objective-C** | 3.25x | 3.40x |
+| **many-classes** | 17,672 | 18,066 | 23,483 | **Objective-C** | 1.02x | 1.33x |
+| **null-safety** | 23,079 | 33,955 | 26,822 | **Objective-C** | 1.47x | 1.16x |
+| **protocol-oriented** | 12,289 | 28,820 | 21,807 | **Objective-C** | 2.35x | 1.77x |
+| **scope-functions** | 29,879 | 46,200 | 56,063 | **Objective-C** | 1.55x | 1.88x |
+| **string-processing** | 17,366 | 42,131 | 27,238 | **Objective-C** | 2.43x | 1.57x |
+| **variable-capture** | 8,569 | 16,392 | 13,484 | **Objective-C** | 1.91x | 1.57x |
 
 ### 关键发现
 
@@ -279,18 +286,18 @@ public struct Example {
 基准测试生成包含完整指标的 `results.csv`：
 ```csv
 case,variant,language,success,text_size,data_size,final_size,lines_of_code
-async-enhanced,-Os,objc,true,31709,11708,24538,731
-async-enhanced,-Os,swift,true,120807,7816,86128,462
-async-enhanced,-Os,kotlin,true,70205,44040,57952,308
-async,-Os,objc,true,102833,21820,76347,2122
-async,-Os,swift,true,225800,21360,162332,1452
-async,-Os,kotlin,true,194987,132976,163086,1005
-callback,-Os,objc,true,60261,19608,46104,1448
-callback,-Os,swift,true,84631,8024,60846,944
-callback,-Os,kotlin,true,105749,80744,90173,907
-collection-minimal,-Os,objc,true,5911,3276,4793,212
-collection-minimal,-Os,swift,true,9707,896,6974,168
-collection-minimal,-Os,kotlin,true,8847,3080,6809,154
+async-enhanced,-Os,objc,true,32497,11708,25089,731
+async-enhanced,-Os,swift,true,113944,7064,81174,462
+async-enhanced,-Os,kotlin,true,85141,44040,68407,308
+async,-Os,objc,true,104617,21820,77596,2122
+async,-Os,swift,true,284694,20248,203335,1452
+async,-Os,kotlin,true,238147,132976,193298,1005
+callback,-Os,objc,true,61773,19608,47163,1448
+callback,-Os,swift,true,81826,7712,58821,944
+callback,-Os,kotlin,true,116485,80744,97688,907
+collection-minimal,-Os,objc,true,5999,3276,4854,212
+collection-minimal,-Os,swift,true,9702,832,6958,168
+collection-minimal,-Os,kotlin,true,8839,3080,6803,154
 data-classes-enhanced,-Os,objc,true,16151,10096,13325,381
 data-classes-enhanced,-Os,swift,true,161777,25680,118380,505
 data-classes-enhanced,-Os,kotlin,true,47741,14320,36283,317

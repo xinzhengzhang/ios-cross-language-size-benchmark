@@ -24,15 +24,25 @@ This is an iOS Size Benchmark project that compares code size impact across Kotl
 
 ### System Requirements
 
-#### Kotlin Native (Required: >= 2.2.20)
+#### Kotlin Native (tested with 2.4.20)
 ```bash
 # Download from https://kotlinlang.org/docs/native.html
-export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-macos-aarch64-2.2.20
+export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-prebuilt-macos-aarch64-2.4.20
 
-# Verify version meets minimum requirement
+# Verify version
 $KOTLIN_NATIVE_DIST/bin/kotlinc-native -version
-# Must show: kotlinc-native 2.2.20 or later
+# Must show: kotlinc-native 2.2.20 or later (results refreshed on 2.4.20)
 ```
+
+**Kotlin Native 2.4.20 cache-model note**: 2.4.20 removed the manual per-library
+`-Xadd-cache` prebuild protocol the original pipeline replayed. `compile_kotlin.sh` now
+builds the user library's static cache via konanc's auto-cache (`-Xauto-cache-from` the
+2.4.20 dist + the committed maven klibs). It measures the same artifact
+(`libexamples_…library-cache.a` via `xcrun size`); only the dependency-cache mechanism
+differs. Because 2.4.20's auto-cache requires every dependency cached, the
+`json-serialization` Kotlin number now includes user-instantiated serializers that 2.2
+externalized. The kotlinx-serialization compiler plugin is resolved dynamically from
+`~/.gradle/caches` (version-matched to the compiler).
 
 #### Swift Toolchain (Xcode)
 ```bash
@@ -61,8 +71,8 @@ The benchmark scripts automatically:
 ```bash
 # iOS compilation (set by compile scripts)
 export APPLE_SDK_PLATFORM=iPhoneOS
-export APPLE_SDK_VERSION_OVERRIDE=18.5
-export XCODE_VERSION_OVERRIDE=16.4.0.16F6
+export APPLE_SDK_VERSION_OVERRIDE=26.5
+export XCODE_VERSION_OVERRIDE=26.6.0.17F113
 
 # Kotlin Native (user must set)
 export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-distribution
@@ -77,7 +87,7 @@ export JAVA_HOME=$(/usr/libexec/java_home)
 ```bash
 # Error: "Kotlin Native version X.X.X is less than required version 2.2.20"
 # Solution: Download newer version from kotlinlang.org
-export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-macos-aarch64-2.2.20
+export KOTLIN_NATIVE_DIST=/path/to/kotlin-native-prebuilt-macos-aarch64-2.4.20
 ```
 
 #### iOS SDK Not Found

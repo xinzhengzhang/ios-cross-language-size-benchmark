@@ -10,9 +10,9 @@ set -e
 
 # Set environment variables exactly as bazel does
 export APPLE_SDK_PLATFORM=iPhoneOS
-export APPLE_SDK_VERSION_OVERRIDE=18.5
+export APPLE_SDK_VERSION_OVERRIDE=26.5
 export PATH=/bin:/usr/bin:/usr/local/bin
-export XCODE_VERSION_OVERRIDE=16.4.0.16F6
+export XCODE_VERSION_OVERRIDE=26.6.0.17F113
 export DEVELOPER_DIR=$(xcode-select -p)
 
 # Create output directories
@@ -23,9 +23,9 @@ echo "Compiling Objective-C with exact bazel command..."
 # Execute the exact bazel command
 exec env - \
     APPLE_SDK_PLATFORM=iPhoneOS \
-    APPLE_SDK_VERSION_OVERRIDE=18.5 \
+    APPLE_SDK_VERSION_OVERRIDE=26.5 \
     PATH=/bin:/usr/bin:/usr/local/bin \
-    XCODE_VERSION_OVERRIDE=16.4.0.16F6 \
+    XCODE_VERSION_OVERRIDE=26.6.0.17F113 \
   bazel-workspace/bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/apple_support~/crosstool/wrapped_clang \
     -target arm64-apple-ios15.0 \
     '-D_FORTIFY_SOURCE=1' \
