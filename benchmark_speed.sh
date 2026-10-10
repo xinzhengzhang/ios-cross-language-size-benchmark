@@ -39,8 +39,12 @@ OUT="results_speed.csv"
 TARGET_SEC="${SPEED_TARGET_SEC:-0.5}"
 REPS="${SPEED_REPS:-5}"
 
-LANGS=(objc swift kotlin scriptc)
+LANGS=(objc swift kotlin scriptc zig)
 EXCLUDE=" async async-enhanced "
+
+# Zig: no managed runtime; the speed exe is lib.zig + a baked loop over
+# runBenchmark, built with the same -O ReleaseSmall profile as the size tier.
+ZIG="${ZIG:-$HOME/.native/toolchains/zig-0.16.0/zig}"
 
 # --- kotlinx-serialization support for the Kotlin macOS speed build ------------
 # json-serialization/lib.kt uses @Serializable + Json{}, which need (a) the
@@ -93,6 +97,17 @@ build_scriptc_at() { # <case> <iters> -> $BUILD/<case>.scriptc.<iters>
   { cat "case/$c/lib.ts"; printf '\nfor (let _i = 0; _i < %s; _i++) { runBenchmark(); }\n' "$it"; } > "$src"
   scriptc build "$src" --emit=exe -o "$BUILD/$c.scriptc.$it" >/dev/null 2>&1
 }
+# zig: like scriptc, the iteration count is baked in (Zig 0.16 has no argv API);
+# concat lib.zig with a `pub fn main` loop and build a native macOS exe.
+build_zig_at() { # <case> <iters> -> $BUILD/<case>.zig.<iters>
+  local c="$1" it="$2" src="$BUILD/$1.z.$2.zig"
+  [ -f "case/$c/lib.zig" ] || return 1
+  { cat "case/$c/lib.zig"
+    printf '\npub fn main() void { var _i: usize = 0; while (_i < %s) : (_i += 1) runBenchmark(); }\n' "$it"
+  } > "$src"
+  "$ZIG" build-exe "$src" -O ReleaseSmall \
+    -femit-bin="$BUILD/$c.zig.$it" --cache-dir "$BUILD/.zcache" >/dev/null 2>&1
+}
 
 # resolve the runnable command for a prepared (case,lang) at iters
 run_cmd() { # <case> <lang> <iters>  -> prints the command, or nothing if unavailable
@@ -102,6 +117,7 @@ run_cmd() { # <case> <lang> <iters>  -> prints the command, or nothing if unavai
     swift)   echo "$BUILD/$c.swift $it" ;;
     kotlin)  echo "$BUILD/$c.kotlin.kexe $it" ;;
     scriptc) echo "$BUILD/$c.scriptc.$it" ;;  # must be pre-built at this iters
+    zig)     echo "$BUILD/$c.zig.$it" ;;       # must be pre-built at this iters
   esac
 }
 measure()  { python3 "$SPEED_DIR/measure.py" "$REPS" $1; }  # min over REPS samples
@@ -116,11 +132,12 @@ for d in case/*/; do
 
   # Build native exes once; note which languages are available & smoke-run OK.
   # (bash 3.2 on macOS has no associative arrays — use plain ok_<lang> vars.)
-  ok_objc=0; ok_swift=0; ok_kotlin=0; ok_scriptc=0
+  ok_objc=0; ok_swift=0; ok_kotlin=0; ok_scriptc=0; ok_zig=0
   build_objc   "$c" && "$BUILD/$c.objc" 3   >/dev/null 2>&1 && ok_objc=1
   build_swift  "$c" && "$BUILD/$c.swift" 3  >/dev/null 2>&1 && ok_swift=1
   build_kotlin "$c" && "$BUILD/$c.kotlin.kexe" 3 >/dev/null 2>&1 && ok_kotlin=1
   build_scriptc_at "$c" 3 && "$BUILD/$c.scriptc.3" >/dev/null 2>&1 && ok_scriptc=1
+  build_zig_at "$c" 3 && "$BUILD/$c.zig.3" >/dev/null 2>&1 && ok_zig=1
 
   # Calibrate N once per case (same N for all languages). Adaptive 1-rep probe via
   # a runnable NATIVE ref (argv-based, no rebuild): start small and ramp up only
@@ -149,6 +166,13 @@ for d in case/*/; do
     [ "$t" != ERR ] && N=$(python3 -c "t=float('$t');print(max(10,min(3000000,round(2000*$TARGET_SEC/t) if t>0 else 300000)))")
     [ -n "$N" ] && echo "  [$c] N=$N (scriptc probe)"
   fi
+  # Last resort: zig-only case — calibrate with a single baked zig probe build.
+  if [ -z "$N" ] && [ "$ok_zig" = 1 ]; then
+    build_zig_at "$c" 2000 >/dev/null 2>&1
+    t=$(measure1 "$(run_cmd "$c" zig 2000)")
+    [ "$t" != ERR ] && N=$(python3 -c "t=float('$t');print(max(10,min(3000000,round(2000*$TARGET_SEC/t) if t>0 else 300000)))")
+    [ -n "$N" ] && echo "  [$c] N=$N (zig probe)"
+  fi
   if [ -z "$N" ]; then
     echo "  [$c] no runnable language — skipping"
     for l in "${LANGS[@]}"; do echo "$c,$l,,0,N/A(no-run)" >> "$OUT"; done
@@ -161,6 +185,9 @@ for d in case/*/; do
     if [ "$l" = scriptc ]; then
       build_scriptc_at "$c" 0    >/dev/null 2>&1   # startup-only baseline
       build_scriptc_at "$c" "$N" >/dev/null 2>&1
+    elif [ "$l" = zig ]; then
+      build_zig_at "$c" 0    >/dev/null 2>&1       # startup-only baseline
+      build_zig_at "$c" "$N" >/dev/null 2>&1
     fi
     # Baseline-subtraction: time the process doing 0 iterations (pure startup +
     # arg parse) and N iterations; per-iter = (work - startup) / N. Subtracting a

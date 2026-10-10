@@ -8,9 +8,9 @@ for r in rows:
     if r["status"] == "ok":
         bycase[r["case"]][r["language"]] = float(r["ns_per_iter"])
 
-langs = ["objc", "swift", "kotlin", "scriptc"]
+langs = ["objc", "swift", "kotlin", "scriptc", "zig"]
 print(f"\n{'case':<22}" + "".join(f"{l:>12}" for l in langs) + "   fastest")
-print("-" * 86)
+print("-" * 98)
 geo = collections.defaultdict(list)
 for c in sorted(bycase):
     d = bycase[c]
