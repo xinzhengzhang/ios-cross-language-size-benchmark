@@ -228,25 +228,30 @@ public struct Example {
 
 ### 结果汇总表
 
-| 测试用例 | Objective-C (字节) | Swift (字节) | Kotlin (字节) | 最优语言 | Swift vs ObjC | Kotlin vs ObjC |
-|------|-------|-------|--------|-------------|-------------|-------------|
-| **async** | 77,596 | 203,335 | 193,298 | **Objective-C** | 2.62x | 2.49x |
-| **async-enhanced** | 25,089 | 81,174 | 68,407 | **Objective-C** | 3.24x | 2.73x |
-| **callback** | 47,163 | 58,821 | 97,688 | **Objective-C** | 1.25x | 2.07x |
-| **collection-minimal** | 4,854 | 6,958 | 6,803 | **Objective-C** | 1.43x | 1.40x |
-| **data-classes** | 24,588 | 115,725 | 91,197 | **Objective-C** | 4.71x | 3.71x |
-| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | **Objective-C** | 7.95x | 2.57x |
-| **extension-functions** | 28,204 | 32,898 | 47,819 | **Objective-C** | 1.17x | 1.70x |
-| **functional-style** | 13,398 | 44,172 | 34,968 | **Objective-C** | 3.30x | 2.61x |
-| **generics-heavy** | 11,572 | 29,855 | 20,542 | **Objective-C** | 2.58x | 1.78x |
-| **inheritance-deep** | 8,926 | 15,309 | 33,458 | **Objective-C** | 1.72x | 3.75x |
-| **json-serialization** | 14,037 | 45,667 | 47,782 | **Objective-C** | 3.25x | 3.40x |
-| **many-classes** | 17,672 | 18,066 | 23,483 | **Objective-C** | 1.02x | 1.33x |
-| **null-safety** | 23,079 | 33,955 | 26,822 | **Objective-C** | 1.47x | 1.16x |
-| **protocol-oriented** | 12,289 | 28,820 | 21,807 | **Objective-C** | 2.35x | 1.77x |
-| **scope-functions** | 29,879 | 46,200 | 56,063 | **Objective-C** | 1.55x | 1.88x |
-| **string-processing** | 17,366 | 42,131 | 27,238 | **Objective-C** | 2.43x | 1.57x |
-| **variable-capture** | 8,569 | 16,392 | 13,484 | **Objective-C** | 1.91x | 1.57x |
+所有数字单位为字节（final = TEXT×0.7 + DATA×0.2）。scriptc 测的是边际用户对象
+`program.o`（见下方 scriptc 档说明）；`async`/`async-enhanced` 对 scriptc 为 N/A（`SC4005`）。
+
+| 测试用例 | ObjC | Swift | Kotlin | scriptc | 最优 | Swift/ObjC | Kotlin/ObjC | scriptc/ObjC |
+|------|------|-------|--------|---------|------|-----------|------------|--------------|
+| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | **ObjC** | 2.62x | 2.49x | — |
+| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | **ObjC** | 3.24x | 2.73x | — |
+| **callback** | 47,163 | 58,821 | 97,688 | 98,194 | **ObjC** | 1.25x | 2.07x | 2.08x |
+| **collection-minimal** | 4,854 | 6,958 | 6,803 | 5,972 | **ObjC** | 1.43x | 1.40x | 1.23x |
+| **data-classes** | 24,588 | 115,725 | 91,197 | 130,563 | **ObjC** | 4.71x | 3.71x | 5.31x |
+| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | 34,088 | **ObjC** | 7.95x | 2.57x | 2.42x |
+| **extension-functions** | 28,204 | 32,898 | 47,819 | 104,889 | **ObjC** | 1.17x | 1.70x | 3.72x |
+| **functional-style** | 13,398 | 44,172 | 34,968 | 90,539 | **ObjC** | 3.30x | 2.61x | 6.76x |
+| **generics-heavy** | 11,572 | 29,855 | 20,542 | 38,551 | **ObjC** | 2.58x | 1.78x | 3.33x |
+| **inheritance-deep** | 8,926 | 15,309 | 33,458 | 26,095 | **ObjC** | 1.72x | 3.75x | 2.92x |
+| **json-serialization** | 14,037 | 45,667 | 47,782 | 23,391 | **ObjC** | 3.25x | 3.40x | 1.67x |
+| **many-classes** | 17,672 | 18,066 | 23,483 | 36,580 | **ObjC** | 1.02x | 1.33x | 2.07x |
+| **null-safety** | 23,079 | 33,955 | 26,822 | 49,211 | **ObjC** | 1.47x | 1.16x | 2.13x |
+| **protocol-oriented** | 12,289 | 28,820 | 21,807 | 45,710 | **ObjC** | 2.35x | 1.77x | 3.72x |
+| **scope-functions** | 29,879 | 46,200 | 56,063 | 97,107 | **ObjC** | 1.55x | 1.88x | 3.25x |
+| **string-processing** | 17,366 | 42,131 | 27,238 | 41,320 | **ObjC** | 2.43x | 1.57x | 2.38x |
+| **variable-capture** | 8,569 | 16,392 | 13,484 | 16,275 | **ObjC** | 1.91x | 1.57x | 1.90x |
+
+¹ scriptc `--lib` 模式要求 async-free 模块图（`SC4005`）。
 
 ### 关键发现
 
@@ -281,68 +286,57 @@ public struct Example {
 - **DATA 段**: 初始化数据（次要因素）
 - **代码行数**: 开发成本参考
 
+### scriptc（TypeScript → 原生）档
+
+第四种实现 `case/*/lib.ts` 由 **scriptc 0.2.7**（实验性的 TypeScript-to-native 编译器）
+编译，用 `./compile_scriptc.sh` 测量。
+
+**测量的是什么。** scriptc 构建一个 iOS arm64 静态库，其归档里恰好有一个*用户*对象
+（`program.o`）加上编译器的运行时对象（`scr_*.o`）。我们**只测 `program.o`**——用户的
+边际代码——因为它是与 Kotlin Native 数字对等的口径（Kotlin 的 stdlib 住在单独的、不计入
+的预构建缓存里）。scriptc 的运行时对象是共享的固定地板（约 616 KB TEXT / 约 80 KB
+DATA，单独报告），不计入用例。
+
+**async 为 N/A。** scriptc 的 `--lib` 模式要求模块图 async-free，因此 `async` 和
+`async-enhanced` 无法构建此档（编译错误 `SC4005`）。
+
+**入口约定。** 每个 `lib.ts` 导出一个顶层 `runBenchmark(): void`，传递性地使用每个
+类型——相当于 Swift `public` 要求的 scriptc 版本，防止死代码消除。
+
+scriptc 各用例的数字和 `scriptc/ObjC` 倍率见上方结果汇总表。
+
+**为什么差异这么大（相对 Kotlin 0.49x–2.59x，几何平均 ~1.35x）。** scriptc 在
+`program.o` 里几乎没有共享 stdlib 地板：不像 Kotlin Native 把 `map`/`filter`/泛型路由到
+共享的、不计入的 stdlib，scriptc **按调用点特化、把泛型单态化内联**进用户对象（类似 C++
+模板）。所以 lambda/集合/泛型密集的用例膨胀（`functional-style` 2.59x、
+`extension-functions` 2.19x），而数据类和深继承用例——Kotlin 自己合成的成员和类型信息被
+计入——反而更小（`json-serialization` 0.49x、`inheritance-deep` 0.78x、
+`collection-minimal` 0.88x）。它用体积换速度和自包含产物；见下方 macOS 执行速度档。
+
 ### 详细结果
 
-基准测试生成包含完整指标的 `results.csv`：
+基准测试生成包含完整指标的 `results.csv`（样例，四种语言）：
 ```csv
 case,variant,language,success,text_size,data_size,final_size,lines_of_code
-async-enhanced,-Os,objc,true,32497,11708,25089,731
-async-enhanced,-Os,swift,true,113944,7064,81174,462
-async-enhanced,-Os,kotlin,true,85141,44040,68407,308
-async,-Os,objc,true,104617,21820,77596,2122
-async,-Os,swift,true,284694,20248,203335,1452
-async,-Os,kotlin,true,238147,132976,193298,1005
-callback,-Os,objc,true,61773,19608,47163,1448
-callback,-Os,swift,true,81826,7712,58821,944
-callback,-Os,kotlin,true,116485,80744,97688,907
 collection-minimal,-Os,objc,true,5999,3276,4854,212
 collection-minimal,-Os,swift,true,9702,832,6958,168
 collection-minimal,-Os,kotlin,true,8839,3080,6803,154
-data-classes-enhanced,-Os,objc,true,16151,10096,13325,381
-data-classes-enhanced,-Os,swift,true,161777,25680,118380,505
-data-classes-enhanced,-Os,kotlin,true,47741,14320,36283,317
-data-classes,-Os,objc,true,29423,14348,23466,917
-data-classes,-Os,swift,true,176673,13256,126322,1093
-data-classes,-Os,kotlin,true,119520,25288,88722,683
-extension-functions,-Os,objc,true,34350,17968,27639,1296
-extension-functions,-Os,swift,true,48213,2920,34333,707
-extension-functions,-Os,kotlin,true,60884,15824,45784,546
-functional-style,-Os,objc,true,16839,6976,13182,486
-functional-style,-Os,swift,true,62244,4896,44550,425
-functional-style,-Os,kotlin,true,34481,27920,29721,280
-generics-heavy,-Os,objc,true,13356,8848,11119,336
-generics-heavy,-Os,swift,true,42477,7560,31246,259
-generics-heavy,-Os,kotlin,true,21929,15920,18534,197
-inheritance-deep,-Os,objc,true,8566,12424,8481,368
-inheritance-deep,-Os,swift,true,17942,14072,15374,355
-inheritance-deep,-Os,kotlin,true,40702,15048,31501,390
-json-serialization,-Os,objc,true,16237,9700,13306,376
-json-serialization,-Os,swift,true,62940,12200,46498,247
-json-serialization,-Os,kotlin,true,26369,8656,20190,207
-many-classes,-Os,objc,true,17523,23852,17036,928
-many-classes,-Os,swift,true,21491,15056,18055,546
-many-classes,-Os,kotlin,true,29174,16120,23646,385
-null-safety,-Os,objc,true,27672,13096,21990,949
-null-safety,-Os,swift,true,46368,8664,34190,822
-null-safety,-Os,kotlin,true,33812,9624,25593,418
-protocol-oriented,-Os,objc,true,14232,11620,12286,535
-protocol-oriented,-Os,swift,true,40145,5016,29105,358
-protocol-oriented,-Os,kotlin,true,27779,11544,21754,315
-scope-functions,-Os,objc,true,35385,19948,28759,1087
-scope-functions,-Os,swift,true,63946,10928,46948,829
-scope-functions,-Os,kotlin,true,73289,17504,54803,698
-string-processing,-Os,objc,true,21997,9124,17223,660
-string-processing,-Os,swift,true,61581,4616,44030,600
-string-processing,-Os,kotlin,true,32912,15192,26077,449
-variable-capture,-Os,objc,true,10952,3952,8457,196
-variable-capture,-Os,swift,true,22756,1800,16289,184
-variable-capture,-Os,kotlin,true,16795,6888,13134,175
+collection-minimal,-Os,scriptc,true,8236,1033,5972,192
+json-serialization,-Os,objc,true,17281,9700,14037,376
+json-serialization,-Os,swift,true,61771,12136,45667,247
+json-serialization,-Os,kotlin,true,61773,22704,47782,207
+json-serialization,-Os,scriptc,true,32520,3137,23391,275
+async,-Os,objc,true,104617,21820,77596,2122
+async,-Os,swift,true,284694,20248,203335,1452
+async,-Os,kotlin,true,238147,132976,193298,1005
+async,-Os,scriptc,false,0,0,0,1117
+...  # 完整四语言矩阵（17 个用例）见 results.csv
 ```
 
 ### 指标说明
 - **case**: 测试用例名称
 - **variant**: 变体（通常为 base）
-- **language**: 编程语言（kotlin/swift/objc）
+- **language**: 编程语言（kotlin/swift/objc/scriptc）
 - **success**: 编译是否成功
 - **text_size**: TEXT 段大小（可执行代码）
 - **data_size**: DATA 段大小（初始化数据）

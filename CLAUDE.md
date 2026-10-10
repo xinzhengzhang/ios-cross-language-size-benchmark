@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is an iOS Size Benchmark project that compares code size impact across Kotlin Native, Swift, and Objective-C implementations. It recreates exact Bazel compilation commands extracted from `bazel aquery` to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
+This is an iOS Size Benchmark project that compares code size impact across Kotlin Native, Swift, Objective-C, and **scriptc** (an experimental TypeScript-to-native compiler) implementations. It recreates exact Bazel compilation commands extracted from `bazel aquery` to measure and compare the compiled binary sizes of equivalent functionality implemented in different languages.
+
+**scriptc tier** (`case/*/lib.ts`, built by `compile_scriptc.sh`): builds an iOS arm64
+static library and measures only the single user object `program.o` (the marginal user
+code, comparable to Kotlin Native's stdlib-in-uncounted-cache model); the runtime objects
+`scr_*.o` are a shared ~616 KB floor reported separately. `--lib` mode requires an
+async-free graph, so `async`/`async-enhanced` are N/A (`SC4005`). Each `lib.ts` exports a
+top-level `runBenchmark(): void` as the DCE-preventing entry. See README for the table.
 
 ## Core Commands
 
@@ -20,6 +27,7 @@ This is an iOS Size Benchmark project that compares code size impact across Kotl
 ./compile_objc.sh    # Objective-C compilation with wrapped_clang
 ./compile_swift.sh   # Swift compilation with worker + params
 ./compile_kotlin.sh  # Kotlin Native compilation with wrapper + dual params
+./compile_scriptc.sh <case>  # scriptc (TS→native) iOS static lib; measures program.o
 ```
 
 ### System Requirements
@@ -108,7 +116,7 @@ xcrun --sdk iphoneos --show-sdk-path  # Should return valid path
 ## Architecture
 
 ### Directory Structure
-- `case/*/` - Test cases with equivalent implementations (lib.kt, lib.swift, lib.m)
+- `case/*/` - Test cases with equivalent implementations (lib.kt, lib.swift, lib.m, lib.ts)
 - `bazel-workspace/` - Exact recreation of Bazel's build directory structure
 - `results.csv` - Generated benchmark results with size metrics
 

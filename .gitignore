@@ -40,3 +40,7 @@ bazel-workspace/examples/ios-size-benchmark/src/iosMain/swift/lib.swift
 
 # Backup_sources
 backup_original_sources/
+node_modules/
+.scriptc/
+*.lib.a
+*.lib.ll

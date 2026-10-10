@@ -1,0 +1,24 @@
+{
+  "name": "ios-cross-language-size-benchmark",
+  "version": "1.0.0",
+  "description": "[English](README.md) | [中文](README_CN.md)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xinzhengzhang/ios-cross-language-size-benchmark.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/xinzhengzhang/ios-cross-language-size-benchmark/issues"
+  },
+  "homepage": "https://github.com/xinzhengzhang/ios-cross-language-size-benchmark#readme",
+  "dependencies": {
+    "@scriptc/runtime-ios-arm64": "^0.2.7"
+  }
+}

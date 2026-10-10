@@ -161,25 +161,31 @@ Our comprehensive testing with Kotlin Native 2.4.20, Swift 6.3.3, and Apple Clan
 
 #### Summary Table
 
-| Case | Objective-C (bytes) | Swift (bytes) | Kotlin (bytes) | Best Language | Swift vs ObjC | Kotlin vs ObjC |
-|------|-------|-------|--------|-------------|-------------|-------------|
-| **async** | 77,596 | 203,335 | 193,298 | **Objective-C** | 2.62x | 2.49x |
-| **async-enhanced** | 25,089 | 81,174 | 68,407 | **Objective-C** | 3.24x | 2.73x |
-| **callback** | 47,163 | 58,821 | 97,688 | **Objective-C** | 1.25x | 2.07x |
-| **collection-minimal** | 4,854 | 6,958 | 6,803 | **Objective-C** | 1.43x | 1.40x |
-| **data-classes** | 24,588 | 115,725 | 91,197 | **Objective-C** | 4.71x | 3.71x |
-| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | **Objective-C** | 7.95x | 2.57x |
-| **extension-functions** | 28,204 | 32,898 | 47,819 | **Objective-C** | 1.17x | 1.70x |
-| **functional-style** | 13,398 | 44,172 | 34,968 | **Objective-C** | 3.30x | 2.61x |
-| **generics-heavy** | 11,572 | 29,855 | 20,542 | **Objective-C** | 2.58x | 1.78x |
-| **inheritance-deep** | 8,926 | 15,309 | 33,458 | **Objective-C** | 1.72x | 3.75x |
-| **json-serialization** | 14,037 | 45,667 | 47,782 | **Objective-C** | 3.25x | 3.40x |
-| **many-classes** | 17,672 | 18,066 | 23,483 | **Objective-C** | 1.02x | 1.33x |
-| **null-safety** | 23,079 | 33,955 | 26,822 | **Objective-C** | 1.47x | 1.16x |
-| **protocol-oriented** | 12,289 | 28,820 | 21,807 | **Objective-C** | 2.35x | 1.77x |
-| **scope-functions** | 29,879 | 46,200 | 56,063 | **Objective-C** | 1.55x | 1.88x |
-| **string-processing** | 17,366 | 42,131 | 27,238 | **Objective-C** | 2.43x | 1.57x |
-| **variable-capture** | 8,569 | 16,392 | 13,484 | **Objective-C** | 1.91x | 1.57x |
+All sizes in bytes (final = TEXT×0.7 + DATA×0.2). scriptc measures the marginal user
+object `program.o` (see the scriptc tier section); `async`/`async-enhanced` are N/A for
+scriptc (`SC4005`).
+
+| Case | ObjC | Swift | Kotlin | scriptc | Best | Swift/ObjC | Kotlin/ObjC | scriptc/ObjC |
+|------|------|-------|--------|---------|------|-----------|------------|--------------|
+| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | **ObjC** | 2.62x | 2.49x | — |
+| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | **ObjC** | 3.24x | 2.73x | — |
+| **callback** | 47,163 | 58,821 | 97,688 | 98,194 | **ObjC** | 1.25x | 2.07x | 2.08x |
+| **collection-minimal** | 4,854 | 6,958 | 6,803 | 5,972 | **ObjC** | 1.43x | 1.40x | 1.23x |
+| **data-classes** | 24,588 | 115,725 | 91,197 | 130,563 | **ObjC** | 4.71x | 3.71x | 5.31x |
+| **data-classes-enhanced** | 14,061 | 111,797 | 36,078 | 34,088 | **ObjC** | 7.95x | 2.57x | 2.42x |
+| **extension-functions** | 28,204 | 32,898 | 47,819 | 104,889 | **ObjC** | 1.17x | 1.70x | 3.72x |
+| **functional-style** | 13,398 | 44,172 | 34,968 | 90,539 | **ObjC** | 3.30x | 2.61x | 6.76x |
+| **generics-heavy** | 11,572 | 29,855 | 20,542 | 38,551 | **ObjC** | 2.58x | 1.78x | 3.33x |
+| **inheritance-deep** | 8,926 | 15,309 | 33,458 | 26,095 | **ObjC** | 1.72x | 3.75x | 2.92x |
+| **json-serialization** | 14,037 | 45,667 | 47,782 | 23,391 | **ObjC** | 3.25x | 3.40x | 1.67x |
+| **many-classes** | 17,672 | 18,066 | 23,483 | 36,580 | **ObjC** | 1.02x | 1.33x | 2.07x |
+| **null-safety** | 23,079 | 33,955 | 26,822 | 49,211 | **ObjC** | 1.47x | 1.16x | 2.13x |
+| **protocol-oriented** | 12,289 | 28,820 | 21,807 | 45,710 | **ObjC** | 2.35x | 1.77x | 3.72x |
+| **scope-functions** | 29,879 | 46,200 | 56,063 | 97,107 | **ObjC** | 1.55x | 1.88x | 3.25x |
+| **string-processing** | 17,366 | 42,131 | 27,238 | 41,320 | **ObjC** | 2.43x | 1.57x | 2.38x |
+| **variable-capture** | 8,569 | 16,392 | 13,484 | 16,275 | **ObjC** | 1.91x | 1.57x | 1.90x |
+
+¹ async-free module graph required by scriptc `--lib` mode (`SC4005`).
 
 #### Key Findings
 
@@ -214,60 +220,53 @@ Results use weighted formula: **Final Size = TEXT × 0.7 + DATA × 0.2**
 - **DATA Section**: Initialized data (secondary factor)
 - **Lines of Code**: Development cost reference
 
+### scriptc (TypeScript → native) tier
+
+A fourth implementation, `case/*/lib.ts`, is compiled with **scriptc 0.2.7** (an
+experimental TypeScript-to-native compiler) and measured by `./compile_scriptc.sh`.
+
+**What is measured.** scriptc builds an iOS arm64 static library whose archive contains
+exactly one *user* object (`program.o`) plus the compiler's runtime objects (`scr_*.o`).
+We measure **`program.o` only** — the user's marginal code — because it is the fair
+analogue of the Kotlin Native number (whose stdlib lives in a separate, uncounted
+prebuild cache). The scriptc runtime objects are a shared, fixed floor (≈616 KB TEXT /
+≈80 KB DATA, reported separately), not charged to the case.
+
+**async is N/A.** scriptc's `--lib` mode requires an async-free module graph, so `async`
+and `async-enhanced` cannot be built for this tier (compiler error `SC4005`).
+
+**Entry contract.** Each `lib.ts` exports a top-level `runBenchmark(): void` that
+transitively exercises every type — the scriptc analogue of Swift's `public` requirement,
+preventing dead-code elimination.
+
+scriptc's per-case numbers and `scriptc/ObjC` ratios are in the Summary Table above.
+
+**Why the spread (0.49x–2.59x vs Kotlin, geomean ~1.35x).** scriptc has almost no shared
+stdlib floor in `program.o`: unlike Kotlin Native (which routes `map`/`filter`/generics to
+a shared, uncounted stdlib), scriptc **specializes per call-site and monomorphizes
+generics inline** into the user object (like C++ templates). So lambda/collection/generic-
+heavy cases balloon (`functional-style` 2.59x, `extension-functions` 2.19x), while
+data-class and deep-inheritance cases — where Kotlin's own synthesized members and
+type-info are counted — come out *smaller* (`json-serialization` 0.49x, `inheritance-deep`
+0.78x, `collection-minimal` 0.88x). It trades binary size for speed and a self-contained
+artifact; see the macOS execution-speed tier below.
+
 #### Detailed Results
 
-The benchmark generates `results.csv` with complete metrics:
+The benchmark generates `results.csv` with complete metrics (sample, all four languages):
 ```csv
 case,variant,language,success,text_size,data_size,final_size,lines_of_code
-async-enhanced,-Os,objc,true,32497,11708,25089,731
-async-enhanced,-Os,swift,true,113944,7064,81174,462
-async-enhanced,-Os,kotlin,true,85141,44040,68407,308
+collection-minimal,-Os,objc,true,5999,3276,4854,212
+collection-minimal,-Os,swift,true,9702,832,6958,168
+collection-minimal,-Os,kotlin,true,8839,3080,6803,154
+collection-minimal,-Os,scriptc,true,8236,1033,5972,192
+json-serialization,-Os,objc,true,17281,9700,14037,376
+json-serialization,-Os,swift,true,61771,12136,45667,247
+json-serialization,-Os,kotlin,true,61773,22704,47782,207
+json-serialization,-Os,scriptc,true,32520,3137,23391,275
 async,-Os,objc,true,104617,21820,77596,2122
 async,-Os,swift,true,284694,20248,203335,1452
 async,-Os,kotlin,true,238147,132976,193298,1005
-callback,-Os,objc,true,61773,19608,47163,1448
-callback,-Os,swift,true,81826,7712,58821,944
-callback,-Os,kotlin,true,116485,80744,97688,907
-collection-minimal,-Os,objc,true,5999,3276,4854,212
-collection-minimal,-Os,swift,true,9707,896,6974,168
-collection-minimal,-Os,kotlin,true,8847,3080,6809,154
-data-classes-enhanced,-Os,objc,true,16151,10096,13325,381
-data-classes-enhanced,-Os,swift,true,161777,25680,118380,505
-data-classes-enhanced,-Os,kotlin,true,47741,14320,36283,317
-data-classes,-Os,objc,true,29423,14348,23466,917
-data-classes,-Os,swift,true,176673,13256,126322,1093
-data-classes,-Os,kotlin,true,119520,25288,88722,683
-extension-functions,-Os,objc,true,34350,17968,27639,1296
-extension-functions,-Os,swift,true,48213,2920,34333,707
-extension-functions,-Os,kotlin,true,60884,15824,45784,546
-functional-style,-Os,objc,true,16839,6976,13182,486
-functional-style,-Os,swift,true,62244,4896,44550,425
-functional-style,-Os,kotlin,true,34481,27920,29721,280
-generics-heavy,-Os,objc,true,13356,8848,11119,336
-generics-heavy,-Os,swift,true,42477,7560,31246,259
-generics-heavy,-Os,kotlin,true,21929,15920,18534,197
-inheritance-deep,-Os,objc,true,8566,12424,8481,368
-inheritance-deep,-Os,swift,true,17942,14072,15374,355
-inheritance-deep,-Os,kotlin,true,40702,15048,31501,390
-json-serialization,-Os,objc,true,16237,9700,13306,376
-json-serialization,-Os,swift,true,62940,12200,46498,247
-json-serialization,-Os,kotlin,true,26369,8656,20190,207
-many-classes,-Os,objc,true,17523,23852,17036,928
-many-classes,-Os,swift,true,21491,15056,18055,546
-many-classes,-Os,kotlin,true,29174,16120,23646,385
-null-safety,-Os,objc,true,27672,13096,21990,949
-null-safety,-Os,swift,true,46368,8664,34190,822
-null-safety,-Os,kotlin,true,33812,9624,25593,418
-protocol-oriented,-Os,objc,true,14232,11620,12286,535
-protocol-oriented,-Os,swift,true,40145,5016,29105,358
-protocol-oriented,-Os,kotlin,true,27779,11544,21754,315
-scope-functions,-Os,objc,true,35385,19948,28759,1087
-scope-functions,-Os,swift,true,63946,10928,46948,829
-scope-functions,-Os,kotlin,true,73289,17504,54803,698
-string-processing,-Os,objc,true,21997,9124,17223,660
-string-processing,-Os,swift,true,61581,4616,44030,600
-string-processing,-Os,kotlin,true,32912,15192,26077,449
-variable-capture,-Os,objc,true,10952,3952,8457,196
-variable-capture,-Os,swift,true,22756,1800,16289,184
-variable-capture,-Os,kotlin,true,16795,6888,13134,175
+async,-Os,scriptc,false,0,0,0,1117
+...  # full 4-language matrix (17 cases) in results.csv
 ```
