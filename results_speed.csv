@@ -33,7 +33,7 @@ inheritance-deep,kotlin,389.41,375645,ok
 inheritance-deep,scriptc,3484.73,375645,ok
 json-serialization,objc,19836819.42,12,ok
 json-serialization,swift,34107038.25,12,ok
-json-serialization,kotlin,,0,N/A(build-or-crash)
+json-serialization,kotlin,18503024.25,12,ok
 json-serialization,scriptc,5192729.17,12,ok
 many-classes,objc,5951.61,58873,ok
 many-classes,swift,6803.5,58873,ok

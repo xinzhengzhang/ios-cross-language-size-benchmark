@@ -22,6 +22,15 @@ size tier. `async`/`async-enhanced` excluded (sleep); cases whose idiomatic ObjC
 Kotlin calls unimplemented methods crash at runtime and are recorded N/A. Speed reflects
 *idiomatic implementation* cost, not pure language speed.
 
+The Kotlin `json-serialization` case needs kotlinx-serialization, which the plain
+`konanc` speed build doesn't link by default. `build_kotlin` detects `@Serializable`/
+`kotlinx.serialization` in `lib.kt` and adds the compiler plugin (resolved from
+`~/.gradle/caches`, version-matched to the dist) plus the macOS `serialization-core`/
+`-json` klibs, fetched once from Maven Central into
+`~/.cache/ios-size-benchmark/kn-serialization-macos-<ver>` (override via
+`KOTLIN_SERIALIZATION_MACOS_CACHE` / `KOTLIN_SERIALIZATION_VERSION`). serialization-core
+depends only on stdlib, so no atomicfu/coroutines klibs are required for this case.
+
 ## Core Commands
 
 ### Running Benchmarks

@@ -42,6 +42,32 @@ REPS="${SPEED_REPS:-5}"
 LANGS=(objc swift kotlin scriptc)
 EXCLUDE=" async async-enhanced "
 
+# --- kotlinx-serialization support for the Kotlin macOS speed build ------------
+# json-serialization/lib.kt uses @Serializable + Json{}, which need (a) the
+# kotlinx-serialization compiler plugin (a host-JVM, target-agnostic jar) and
+# (b) the macOS klibs of serialization-core/-json. The size tier gets these from
+# the captured Bazel graph (iOS klibs, unusable for a macos_arm64 host build), so
+# the speed tier fetches the matching version once into a cache dir — mirroring
+# the size tier's ~/.cache auto-cache dir. serialization-core depends only on
+# stdlib (bundled in the dist); no atomicfu/coroutines are needed for this case.
+SER_VER="${KOTLIN_SERIALIZATION_VERSION:-1.7.3}"
+SER_CACHE="${KOTLIN_SERIALIZATION_MACOS_CACHE:-$HOME/.cache/ios-size-benchmark/kn-serialization-macos-$SER_VER}"
+KV=$(basename "$KN" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+SER_PLUGIN=$(find "$HOME/.gradle/caches" -iname "kotlin-serialization-compiler-plugin-embeddable-${KV}.jar" 2>/dev/null | head -1)
+[ -z "$SER_PLUGIN" ] && SER_PLUGIN=$(find "$HOME/.gradle/caches" -iname "kotlin-serialization-compiler-plugin-embeddable-*.jar" 2>/dev/null | head -1)
+SER_CORE="$SER_CACHE/kotlinx-serialization-core-macosarm64-$SER_VER.klib"
+SER_JSON="$SER_CACHE/kotlinx-serialization-json-macosarm64-$SER_VER.klib"
+ensure_ser_klibs() { # fetch the two macOS klibs once; 0 if both present
+  [ -f "$SER_CORE" ] && [ -f "$SER_JSON" ] && return 0
+  mkdir -p "$SER_CACHE"
+  local base="https://repo1.maven.org/maven2/org/jetbrains/kotlinx"
+  for art in kotlinx-serialization-core-macosarm64 kotlinx-serialization-json-macosarm64; do
+    local f="$SER_CACHE/$art-$SER_VER.klib"
+    [ -f "$f" ] || curl -fsSL -o "$f" "$base/$art/$SER_VER/$art-$SER_VER.klib" || return 1
+  done
+  [ -f "$SER_CORE" ] && [ -f "$SER_JSON" ]
+}
+
 rm -rf "$BUILD"; mkdir -p "$BUILD"
 echo "case,language,ns_per_iter,iters,status" > "$OUT"
 
@@ -51,9 +77,16 @@ build_objc()   { xcrun clang -Os -fobjc-arc -framework Foundation \
                    "case/$1/lib.m" "$SPEED_DIR/main.m" -o "$BUILD/$1.objc" 2>/dev/null; }
 build_swift()  { xcrun swiftc -Osize \
                    "case/$1/lib.swift" "$SPEED_DIR/main.swift" -o "$BUILD/$1.swift" 2>/dev/null; }
-build_kotlin() { "$KN/bin/konanc" -opt -produce program -target macos_arm64 \
-                   -entry kntr.examples.ios.size.benchmark.main \
-                   "case/$1/lib.kt" "$SPEED_DIR/main.kt" -o "$BUILD/$1.kotlin" >/dev/null 2>&1; }
+build_kotlin() { # cases using kotlinx-serialization need the plugin + macOS klibs
+  local extra=()
+  if grep -qE '@Serializable|kotlinx\.serialization' "case/$1/lib.kt" 2>/dev/null; then
+    { [ -n "$SER_PLUGIN" ] && ensure_ser_klibs; } || return 1  # unmet deps -> N/A
+    extra=( -Xplugin="$SER_PLUGIN" -l "$SER_CORE" -l "$SER_JSON" )
+  fi
+  "$KN/bin/konanc" -opt -produce program -target macos_arm64 \
+    -entry kntr.examples.ios.size.benchmark.main \
+    ${extra[@]+"${extra[@]}"} \
+    "case/$1/lib.kt" "$SPEED_DIR/main.kt" -o "$BUILD/$1.kotlin" >/dev/null 2>&1; }
 # scriptc: codegen a single-file program (case lib + a top-level loop baked at iters)
 build_scriptc_at() { # <case> <iters> -> $BUILD/<case>.scriptc.<iters>
   local c="$1" it="$2" src="$BUILD/$1.sc.$2.mts"

@@ -269,12 +269,15 @@ companion to the iOS size tier). `results_speed.csv` holds the raw numbers.
   cases (ms-scale per call) land at small `N`; light cases at large `N` (shown below).
 
 **Coverage caveats:** `async`/`async-enhanced` are excluded (their drivers sleep).
-ObjC is N/A for 4 cases and Swift/Kotlin for 1 each — those cases call
+ObjC is N/A for 4 cases and Swift for 1 (extension-functions) — those cases call
 declared-but-unimplemented methods and crash at runtime (fine for the size tier, which
-never executes them). **These are the *idiomatic* implementations (identical to the size
-tier), not hand-tuned equivalents** — so speed reflects idiomatic implementation cost,
-not pure language speed. The extreme spreads (e.g. string-processing: ObjC's `NSString`
-primitives vs. others' manual string work) are real implementation differences.
+never executes them). The Kotlin `json-serialization` build links the
+kotlinx-serialization compiler plugin plus the macOS `serialization-core`/`-json` klibs
+(fetched once to `~/.cache`), so it is measured, not N/A. **These are the *idiomatic*
+implementations (identical to the size tier), not hand-tuned equivalents** — so speed
+reflects idiomatic implementation cost, not pure language speed. The extreme spreads
+(e.g. string-processing: ObjC's `NSString` primitives vs. others' manual string work)
+are real implementation differences.
 
 | Case | N | ObjC | Swift | Kotlin | scriptc | Fastest |
 |------|---|------|-------|--------|---------|---------|
@@ -286,7 +289,7 @@ primitives vs. others' manual string work) are real implementation differences.
 | **functional-style** | 10,585 | 49.4 µs | 43.4 µs | 19.1 µs | 30.1 µs | **kotlin** |
 | **generics-heavy** | 57,033 | 2.2 µs | 6.8 µs | 1.6 µs | 7.7 µs | **kotlin** |
 | **inheritance-deep** | 375,645 | 1.1 µs | 1.2 µs | 389 ns | 3.5 µs | **kotlin** |
-| **json-serialization** | 12 | 19.84 ms | 34.11 ms | N/A | 5.19 ms | **scriptc** |
+| **json-serialization** | 12 | 19.84 ms | 34.11 ms | 18.50 ms | 5.19 ms | **scriptc** |
 | **many-classes** | 58,873 | 6.0 µs | 6.8 µs | 1.9 µs | 3.2 µs | **kotlin** |
 | **null-safety** | 5,319 | 90.8 µs | 87.1 µs | 14.0 µs | 9.7 µs | **scriptc** |
 | **protocol-oriented** | 10 | 224.70 ms | 54.07 ms | 86.86 ms | 36.11 ms | **scriptc** |
@@ -300,7 +303,7 @@ over each language's runnable cases, so case sets differ):
 | Language | Geomean vs fastest | Cases |
 |----------|-------------------|-------|
 | scriptc | **1.93x** | 15 |
-| kotlin | 2.22x | 14 |
+| kotlin | 2.29x | 15 |
 | objc | 3.17x | 11 |
 | swift | 3.27x | 14 |
 

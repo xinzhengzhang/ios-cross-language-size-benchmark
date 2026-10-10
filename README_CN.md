@@ -330,10 +330,13 @@ scriptc 各用例的数字和 `scriptc/ObjC` 倍率见上方结果汇总表。
   落在小 `N`，轻的用例在大 `N`（见下表）。
 
 **覆盖说明：** `async`/`async-enhanced` 被排除（其驱动会 sleep）。ObjC 有 4 个用例、
-Swift/Kotlin 各 1 个用例为 N/A——这些用例调用了声明但未实现的方法，运行时崩溃（对 size 档
-无妨，它从不执行）。**这些是各语言的*惯用*实现（与 size 档完全相同），不是手工对齐的等价
-实现**——所以速度反映的是惯用实现的成本，而非纯语言速度。极端的差距（如 string-processing：
-ObjC 的 `NSString` 原语 vs 其他语言的手写字符串处理）是真实的实现差异。
+Swift 有 1 个用例（extension-functions）为 N/A——这些用例调用了声明但未实现的方法，运行时
+崩溃（对 size 档无妨，它从不执行）。Kotlin 的 `json-serialization` 构建会链接
+kotlinx-serialization 编译器插件以及 macOS 版的 `serialization-core`/`-json` klib（首次运行
+拉取到 `~/.cache`），因此被正常测量、不再是 N/A。**这些是各语言的*惯用*实现（与 size 档完全
+相同），不是手工对齐的等价实现**——所以速度反映的是惯用实现的成本，而非纯语言速度。极端的
+差距（如 string-processing：ObjC 的 `NSString` 原语 vs 其他语言的手写字符串处理）是真实的
+实现差异。
 
 | 用例 | N | ObjC | Swift | Kotlin | scriptc | 最快 |
 |------|---|------|-------|--------|---------|------|
@@ -345,7 +348,7 @@ ObjC 的 `NSString` 原语 vs 其他语言的手写字符串处理）是真实�
 | **functional-style** | 10,585 | 49.4 µs | 43.4 µs | 19.1 µs | 30.1 µs | **kotlin** |
 | **generics-heavy** | 57,033 | 2.2 µs | 6.8 µs | 1.6 µs | 7.7 µs | **kotlin** |
 | **inheritance-deep** | 375,645 | 1.1 µs | 1.2 µs | 389 ns | 3.5 µs | **kotlin** |
-| **json-serialization** | 12 | 19.84 ms | 34.11 ms | N/A | 5.19 ms | **scriptc** |
+| **json-serialization** | 12 | 19.84 ms | 34.11 ms | 18.50 ms | 5.19 ms | **scriptc** |
 | **many-classes** | 58,873 | 6.0 µs | 6.8 µs | 1.9 µs | 3.2 µs | **kotlin** |
 | **null-safety** | 5,319 | 90.8 µs | 87.1 µs | 14.0 µs | 9.7 µs | **scriptc** |
 | **protocol-oriented** | 10 | 224.70 ms | 54.07 ms | 86.86 ms | 36.11 ms | **scriptc** |
@@ -358,7 +361,7 @@ ObjC 的 `NSString` 原语 vs 其他语言的手写字符串处理）是真实�
 | 语言 | 相对最快几何平均 | 用例数 |
 |------|-----------------|--------|
 | scriptc | **1.93x** | 15 |
-| kotlin | 2.22x | 14 |
+| kotlin | 2.29x | 15 |
 | objc | 3.17x | 11 |
 | swift | 3.27x | 14 |
 
