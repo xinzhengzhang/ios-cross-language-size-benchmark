@@ -22,8 +22,11 @@ shared runtime floor** (everything the case uses is inlined/monomorphized into t
 object), so the whole object *is* the user-marginal cost. DCE root: `export fn
 bench_run() void { runBenchmark(); }`. Ports are idiomatic, not 1:1 (tagged unions +
 `switch` for polymorphism, comptime `fn(comptime T: type) type` generics, explicit
-closure-structs / `*const fn` pointers for lambdas). `async`/`async-enhanced` are N/A
-(Zig 0.16 has no stable async/await). **Honesty caveat**: `inheritance-deep` (650 B,
+closure-structs / `*const fn` pointers for lambdas). `async`/`async-enhanced` ARE built,
+on the 0.16 `std.Io` API (`io.async`/`Future`/`Group`) over the `std.Io.Threaded`
+thread-pool backend; that runtime inlines whole into `program.o` (~297 KB DATA, no shared
+floor), making them the two largest Zig cases (125,385 / 122,659) — scriptc still can't
+(`SC4005`). **Honesty caveat**: `inheritance-deep` (650 B,
 34.8 ns) and `many-classes` (427 B, 39.9 ns) are near-empty because the idiomatic Zig —
 enum + `switch` branches returning constants over comptime-known inputs — is
 constant-folded away under ReleaseSmall; those numbers reflect the optimizer erasing a

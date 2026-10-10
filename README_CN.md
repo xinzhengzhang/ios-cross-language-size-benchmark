@@ -247,13 +247,14 @@ public struct Example {
 
 所有数字单位为字节（final = TEXT×0.7 + DATA×0.2）。scriptc 测的是边际用户对象
 `program.o`（见下方 scriptc 档说明）；Zig 测的是单个可重定位 `program.o`（见下方 Zig 档
-说明）。`async`/`async-enhanced` 对 scriptc 为 N/A（`SC4005`），对 Zig 为 N/A（Zig 0.16
-无稳定 async/await）。
+说明）。`async`/`async-enhanced` 仅对 scriptc 为 N/A（`--lib` 模式要求 async-free 模块图，
+`SC4005`）。Zig 用 0.16 的 `std.Io` 结构化并发 API 跑在 `std.Io.Threaded` 线程池后端上，
+两个用例都能构建——见脚注 ²。
 
 | 测试用例 | ObjC | Swift | Kotlin | scriptc | Zig | 最优 | Swift/ObjC | Kotlin/ObjC | scriptc/ObjC | Zig/ObjC |
 |------|------|-------|--------|---------|-----|------|-----------|------------|--------------|----------|
-| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | N/A² | **ObjC** | 2.62x | 2.49x | — | — |
-| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | N/A² | **ObjC** | 3.24x | 2.73x | — | — |
+| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | 125,385² | **ObjC** | 2.62x | 2.49x | — | 1.62x |
+| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | 122,659² | **ObjC** | 3.24x | 2.73x | — | 4.89x |
 | **callback** | 47,163 | 58,821 | 97,688 | 98,194 | **25,235** | **Zig** | 1.25x | 2.07x | 2.08x | 0.54x |
 | **collection-minimal** | 4,854 | 6,958 | 6,803 | 5,972 | 8,224 | **ObjC** | 1.43x | 1.40x | 1.23x | 1.69x |
 | **data-classes** | 24,588 | 115,725 | 91,197 | 130,563 | 42,424 | **ObjC** | 4.71x | 3.71x | 5.31x | 1.73x |
@@ -271,7 +272,9 @@ public struct Example {
 | **variable-capture** | 8,569 | 16,392 | 13,484 | 16,275 | 9,608 | **ObjC** | 1.91x | 1.57x | 1.90x | 1.12x |
 
 ¹ scriptc `--lib` 模式要求 async-free 模块图（`SC4005`）。
-² Zig 0.16 无稳定 async/await。
+² Zig 用 0.16 的 `std.Io` API（`io.async`/`Future`/`Group`）跑在 `std.Io.Threaded` 线程池
+后端上；该运行时整段内联进 `program.o`（无共享底座），使这两个用例成为 Zig 最大的两个——
+约 297 KB 的 DATA 是线程池运行时本身，而非工作负载。
 ³ comptime 常量折叠——`inheritance-deep`（650 B）和 `many-classes`（427 B）之所以近乎为空，
 是因为惯用 Zig 实现（enum + `switch`，分支返回常量，输入在 comptime 已知）在 ReleaseSmall
 下被整段常量折叠消除。这些数字反映的是优化器抹掉了一个 comptime 可知的工作负载，**不是稳态
@@ -279,10 +282,12 @@ public struct Example {
 
 ### 关键发现
 
-**🏆 ObjC 不再普遍最小。** 在 15 个可运行用例里 ObjC 仍赢下 10 个，但 **Zig 赢了 5 个**
-（callback、generics-heavy、inheritance-deep、many-classes、scope-functions）。在数据类/
-JSON/字符串这类重用例上，Zig 落在中游到偏大（`json-serialization` 达 ObjC 的 4.26x——
-`std.json` 被整体拉进来），因为真实工作无法被折叠，而它又没有共享 stdlib 可以外部化。
+**🏆 ObjC 不再普遍最小。** 在 17 个用例里 ObjC 赢下 12 个（除 Zig 的 5 胜之外全部），
+但 **Zig 赢了 5 个**（callback、generics-heavy、inheritance-deep、many-classes、
+scope-functions）。两个 `async` 用例也归 ObjC——Zig 的 `std.Io.Threaded` 运行时让它成为最大
+（ObjC 的 1.62x / 4.89x）。在数据类/JSON/字符串/async 这类重用例上，Zig 落在中游到偏大
+（`json-serialization` 达 ObjC 的 4.26x——`std.json` 被整体拉进来），因为真实工作无法被折叠，
+而它又没有共享 stdlib 可以外部化。
 
 > **诚实提醒（务必注意）：** Zig 在 `inheritance-deep`（650 B）和 `many-classes`（427 B）上
 > 的极小数字是 **comptime 常量折叠**的产物，不是「多态小 40 倍」。惯用 Zig 用 enum + `switch`
@@ -366,7 +371,11 @@ DCE 根：`export fn bench_run() void { runBenchmark(); }`。
 `fn(comptime T: type) type`，lambda 用显式 closure-struct 或 `*const fn` 指针（Zig 没有
 闭包）。这些是真实的结构差异，都已记录。
 
-**async / async-enhanced 为 N/A。** Zig 0.16 没有稳定的 async/await（与 scriptc 平行）。
+**async 能构建，而且很大。** `async`/`async-enhanced` 都移植到 0.16 的 `std.Io` API
+（`io.async` → `Future`、`std.Io.Group` 做结构化 fan-out），跑在可移植的 `std.Io.Threaded`
+线程池后端上。它没有共享并发运行时可摊销：整个线程池内联进 `program.o`（每个约 297 KB
+DATA），所以这是 **Zig 最大的两个用例**（125,385 / 122,659），而非 N/A。scriptc 仍无法
+构建它们（`SC4005`）。
 
 > **诚实提醒（体积与速度处均需注意）：** `inheritance-deep`（650 B，34.8 ns）和
 > `many-classes`（427 B，39.9 ns）之所以近乎为空，是因为惯用 Zig——enum + `switch` 且分支
@@ -397,8 +406,8 @@ DCE 根：`export fn bench_run() void { runBenchmark(); }`。
 - `N` 按用例标定（各语言同一个 `N`），使 N 次运行约 0.5 秒。重的用例（每次调用毫秒级）
   落在小 `N`，轻的用例在大 `N`（见下表）。
 
-**覆盖说明：** `async`/`async-enhanced` 被排除（其驱动会 sleep；Zig 0.16 也无稳定
-async/await）。ObjC 有 4 个用例、Swift 有 1 个用例（extension-functions）为 N/A——这些用例
+**覆盖说明：** `async`/`async-enhanced` 对所有语言都被排除（其驱动会 sleep），尽管 Zig
+在 size 档*能*构建它们。ObjC 有 4 个用例、Swift 有 1 个用例（extension-functions）为 N/A——这些用例
 调用了声明但未实现的方法，运行时崩溃（对 size 档无妨，它从不执行）。Kotlin 的 `json-serialization` 构建会链接
 kotlinx-serialization 编译器插件以及 macOS 版的 `serialization-core`/`-json` klib（首次运行
 拉取到 `~/.cache`），因此被正常测量、不再是 N/A。**这些是各语言的*惯用*实现（与 size 档完全

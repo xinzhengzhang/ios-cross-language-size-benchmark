@@ -3,12 +3,12 @@ async-enhanced,-Os,objc,true,32497,11708,25089,731
 async-enhanced,-Os,swift,true,113944,7064,81174,462
 async-enhanced,-Os,kotlin,true,85141,44040,68407,308
 async-enhanced,-Os,scriptc,false,0,0,0,588
-async-enhanced,-Os,zig,false,0,0,0,0
+async-enhanced,-Os,zig,true,90248,297428,122659,434
 async,-Os,objc,true,104617,21820,77596,2122
 async,-Os,swift,true,284694,20248,203335,1452
 async,-Os,kotlin,true,238147,132976,193298,1005
 async,-Os,scriptc,false,0,0,0,1117
-async,-Os,zig,false,0,0,0,0
+async,-Os,zig,true,94009,297892,125385,1044
 callback,-Os,objc,true,61773,19608,47163,1448
 callback,-Os,swift,true,81826,7712,58821,944
 callback,-Os,kotlin,true,116485,80744,97688,907

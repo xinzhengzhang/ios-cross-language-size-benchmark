@@ -10,8 +10,8 @@ Row format matches the other languages:
   case,variant,language,success,text_size,data_size,final_size,lines_of_code
   final = round(TEXT*0.7 + DATA*0.2)
 
-Cases with no case/<name>/lib.zig (e.g. async / async-enhanced — Zig 0.16 has no
-stable async) get an honest N/A row: false,0,0,0,0.
+Cases with no case/<name>/lib.zig get an honest N/A row: false,0,0,0,0. (All 17
+cases now have a lib.zig, including async/async-enhanced ported onto std.Io.)
 """
 import csv, subprocess, sys, os
 

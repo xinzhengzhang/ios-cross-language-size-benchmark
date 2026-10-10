@@ -179,12 +179,14 @@ Our comprehensive testing with Kotlin Native 2.4.20, Swift 6.3.3, Apple Clang 21
 
 All sizes in bytes (final = TEXT×0.7 + DATA×0.2). scriptc and Zig both measure the
 marginal user object `program.o` (see their tier sections); `async`/`async-enhanced` are
-N/A for scriptc (`SC4005`) and for Zig (0.16 has no stable async/await).
+N/A for scriptc only (`--lib` mode requires an async-free graph, `SC4005`). Zig ports both
+cases on `std.Io` (the 0.16 structured-concurrency API) over the `std.Io.Threaded`
+thread-pool backend — see footnote ².
 
 | Case | ObjC | Swift | Kotlin | scriptc | Zig | Best | Swift/ObjC | Kotlin/ObjC | scriptc/ObjC | Zig/ObjC |
 |------|------|-------|--------|---------|-----|------|-----------|------------|--------------|----------|
-| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | N/A² | **ObjC** | 2.62x | 2.49x | — | — |
-| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | N/A² | **ObjC** | 3.24x | 2.73x | — | — |
+| **async** | 77,596 | 203,335 | 193,298 | N/A¹ | 125,385² | **ObjC** | 2.62x | 2.49x | — | 1.62x |
+| **async-enhanced** | 25,089 | 81,174 | 68,407 | N/A¹ | 122,659² | **ObjC** | 3.24x | 2.73x | — | 4.89x |
 | **callback** | 47,163 | 58,821 | 97,688 | 98,194 | **25,235** | **Zig** | 1.25x | 2.07x | 2.08x | 0.54x |
 | **collection-minimal** | 4,854 | 6,958 | 6,803 | 5,972 | 8,224 | **ObjC** | 1.43x | 1.40x | 1.23x | 1.69x |
 | **data-classes** | 24,588 | 115,725 | 91,197 | 130,563 | 42,424 | **ObjC** | 4.71x | 3.71x | 5.31x | 1.73x |
@@ -201,19 +203,23 @@ N/A for scriptc (`SC4005`) and for Zig (0.16 has no stable async/await).
 | **string-processing** | 17,366 | 42,131 | 27,238 | 41,320 | 24,693 | **ObjC** | 2.43x | 1.57x | 2.38x | 1.42x |
 | **variable-capture** | 8,569 | 16,392 | 13,484 | 16,275 | 9,608 | **ObjC** | 1.91x | 1.57x | 1.90x | 1.12x |
 
-¹ async-free module graph required by scriptc `--lib` mode (`SC4005`).  ² Zig 0.16 has no
-stable async/await.  ³ `inheritance-deep` and `many-classes` are comptime constant-folded
-away under ReleaseSmall — see the honesty caveat below; these are not real dispatch costs.
+¹ async-free module graph required by scriptc `--lib` mode (`SC4005`).  ² Zig uses the
+0.16 `std.Io` API (`io.async`/`Future`/`Group`) on the `std.Io.Threaded` thread-pool
+backend; that runtime inlines whole into `program.o` (no shared floor), making these the
+two largest Zig cases — the ~297 KB DATA is the thread-pool runtime, not the workload.
+³ `inheritance-deep` and `many-classes` are comptime constant-folded away under
+ReleaseSmall — see the honesty caveat below; these are not real dispatch costs.
 
 #### Key Findings
 
 **🏆 Objective-C produces the smallest binaries on most cases, but no longer universally.**
-ObjC wins **10 of the 15 runnable cases**, making it the default pick for size-critical
-work. **Zig wins the other 5** — callback (0.54x), generics-heavy (0.52x), scope-functions
-(0.75x), and the two comptime-folded cases inheritance-deep (0.07x) and many-classes
-(0.02x). On data/json/string-heavy cases Zig lands mid-pack to large (json-serialization
-4.26x ObjC — `std.json` is pulled in whole) because the real work can't be folded and Zig
-has no shared stdlib to offload to.
+ObjC wins **12 of the 17 cases** (every row except Zig's 5 wins), making it the default
+pick for size-critical work — including both `async` cases, where Zig's `std.Io.Threaded`
+runtime makes it the largest (1.62x / 4.89x ObjC). **Zig wins 5** — callback (0.54x),
+generics-heavy (0.52x), scope-functions (0.75x), and the two comptime-folded cases
+inheritance-deep (0.07x) and many-classes (0.02x). On data/json/string/async-heavy cases
+Zig lands mid-pack to large (json-serialization 4.26x ObjC — `std.json` is pulled in
+whole) because the real work can't be folded and Zig has no shared stdlib to offload to.
 
 > **⚠️ Honesty caveat — comptime constant-folding.** Zig's `inheritance-deep` (650 B) and
 > `many-classes` (427 B) are near-empty objects, **not** evidence that Zig does
@@ -305,8 +311,12 @@ language. DCE root: `export fn bench_run() void { runBenchmark(); }`.
 pointers (Zig has no closures). These are genuine structural differences, documented, not
 hand-tuned equivalents.
 
-**async is N/A.** Zig 0.16 has no stable async/await, so `async`/`async-enhanced` cannot
-be built for this tier (parallels scriptc's `SC4005`).
+**async is built, and it's expensive.** Both `async`/`async-enhanced` port onto the 0.16
+`std.Io` API (`io.async` → `Future`, `std.Io.Group` for structured fan-out) running on the
+portable `std.Io.Threaded` thread-pool backend. Unlike the other languages there is no
+shared concurrency runtime to amortize: the whole thread pool inlines into `program.o`
+(~297 KB DATA each), so these are the **two largest Zig cases** (125,385 / 122,659) rather
+than N/A. scriptc still can't build them (`SC4005`).
 
 > **⚠️ Honesty caveat (size).** `inheritance-deep` (650 B) and `many-classes` (427 B) are
 > near-empty because their idiomatic Zig — an `enum`/`switch` returning constants over
@@ -356,8 +366,8 @@ implementations (identical to the size tier), not hand-tuned equivalents** — s
 reflects idiomatic implementation cost, not pure language speed. The extreme spreads
 (e.g. string-processing: ObjC's `NSString` primitives vs. others' manual string work)
 are real implementation differences. Zig participates with its baked-iteration driver
-(see methodology); `async`/`async-enhanced` are N/A for Zig as well (no stable 0.16
-async/await).
+(see methodology); `async`/`async-enhanced` are excluded here for every language (their
+drivers sleep), even though Zig *can* build them for the size tier.
 
 | Case | N | ObjC | Swift | Kotlin | scriptc | Zig | Fastest |
 |------|---|------|-------|--------|---------|-----|---------|
