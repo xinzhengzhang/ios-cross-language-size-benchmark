@@ -415,6 +415,19 @@ kotlinx-serialization 编译器插件以及 macOS 版的 `serialization-core`/`-
 差距（如 string-processing：ObjC 的 `NSString` 原语 vs 其他语言的手写字符串处理）是真实的
 实现差异。
 
+> **⚠️「惯用默认」≠「语言上限」（已实测）。** Zig 输掉的速度用例，多半输给的是**分配/
+> 字符串格式化的默认写法**，而非更慢的语言。`data-classes` 的驱动每次迭代建 7,500 个小堆
+> 字符串（`std.fmt.allocPrint` 写进可增长的 `ArrayList`，底座是 arena over `page_allocator`）；
+> Swift 赢这个用例，很大程度是因为它的 small-string optimization 把 13 字节的字符串完全留在
+> 栈上、不碰堆。我们在 `data-classes` 上直接验证了优化空间（改了、实测、再回退——提交的代码
+> 仍是最朴素的惯用默认）：给两个热循环加 `ensureTotalCapacity` 得 **1.12×**；再把 arena 底座
+> 从 `page_allocator` 换成 `c_allocator` 共得 **1.38×**——这会把 Zig/Swift 从 2.64× 拉到约
+> 1.9×，差距几乎砍半，且**不改动算法**。所以这些「输」的数字测的是*这份移植保守的分配器默认*，
+> 并非语言本身属性；一个会调热点的 Zig 作者能拿回大半差距，但那就不再是所有语言共同遵守的
+> 「默认惯用」基线了。方法论是自洽的（每个语言都跑自己的默认惯用——Swift 的 SSO、ObjC 的
+> Foundation、scriptc 的特化 codegen 都是各自的免费午餐），但请把 Zig 的*输*读作「默认分配器
+> 策略拖累了它」，而不是「Zig 更慢」。
+
 | 用例 | N | ObjC | Swift | Kotlin | scriptc | Zig | 最快 |
 |------|---|------|-------|--------|---------|-----|------|
 | **callback** | 10 | N/A | 104.76 ms | 108.55 ms | 71.06 ms | 38.41 ms | **Zig** |

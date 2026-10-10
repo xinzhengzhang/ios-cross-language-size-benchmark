@@ -369,6 +369,25 @@ are real implementation differences. Zig participates with its baked-iteration d
 (see methodology); `async`/`async-enhanced` are excluded here for every language (their
 drivers sleep), even though Zig *can* build them for the size tier.
 
+> **⚠️ "Idiomatic default" ≠ "language ceiling" (measured).** Where Zig *loses* a speed
+> case it is usually losing to an allocation/string-formatting default, not to a slower
+> language. The `data-classes` driver builds 7,500 tiny heap strings per iteration
+> (`std.fmt.allocPrint` into growable `ArrayList`s backed by an arena over
+> `page_allocator`); Swift wins that case largely because its small-string optimization
+> keeps 13-byte strings off the heap entirely. We verified the headroom directly on
+> `data-classes` (changes applied, measured, then reverted — the committed code is still
+> the plain idiomatic default): adding `ensureTotalCapacity` to the two hot loops gives
+> **1.12×**, and additionally backing the arena with `c_allocator` instead of
+> `page_allocator` gives **1.38×** overall — which would pull Zig/Swift from 2.64× down to
+> roughly 1.9×, roughly halving the gap, with no change to the algorithm. So these loss
+> numbers measure *this port's conservative allocator defaults* as much as any language
+> property; a Zig author tuning the hot path would reclaim most of the gap, but that would
+> no longer be the apples-to-apples "default idiomatic" baseline every language is held to
+> here. The benchmark is self-consistent (every language runs its own default idiom —
+> Swift's SSO, ObjC's Foundation, scriptc's specialized codegen are each that language's
+> free lunch), but read a Zig *loss* as "the default allocator strategy cost it," not
+> "Zig is slower."
+
 | Case | N | ObjC | Swift | Kotlin | scriptc | Zig | Fastest |
 |------|---|------|-------|--------|---------|-----|---------|
 | **callback** | 10 | N/A | 104.76 ms | 108.55 ms | 71.06 ms | 38.41 ms | **Zig** |

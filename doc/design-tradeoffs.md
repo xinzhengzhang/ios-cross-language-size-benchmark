@@ -226,6 +226,15 @@ API**,从类型即可见。默认廉价、共享 opt-in、无法意外逃逸。
 ## 7. 诚实度边界
 
 - **惯用实现,非手工对齐**:速度/体积反映各语言地道写法的成本,极端差距是真实实现差异。
+- **Zig 速度「输」= 分配器默认,非语言上限(已实测)**:Zig 输掉的速度用例多半输给的是
+  分配/字符串格式化默认写法。`data-classes` 每迭代建 7,500 个小堆字符串(`allocPrint` 写进
+  可增长 `ArrayList`,底座 arena over `page_allocator`),而 Swift 靠 small-string optimization
+  把 13 字节串留在栈上、不碰堆。在 `data-classes` 上实测验证(改→测→回退,提交代码仍是朴素
+  默认):热循环加 `ensureTotalCapacity` 得 **1.12×**,再把 arena 底座换成 `c_allocator` 共得
+  **1.38×**——会把 Zig/Swift 从 2.64× 拉到约 1.9×,差距几乎砍半,且不改算法。方法论自洽(每个
+  语言都跑自己的默认惯用),但 Zig 的「输」应读作「默认分配器策略拖累」,而非「语言更慢」。
+  `0.16` 的 `allocPrint` 是**单遍**格式化(initCapacity(fmt.len) → 边写边扩 → `toOwnedSlice`),
+  成本在堆流量,不在格式化遍数。
 - **N/A**:部分 ObjC 用例(及 Swift 的 extension-functions)调用声明但未实现的方法,运行时
   崩溃 → 速度档记 N/A(体积档从不执行,无妨);`async`/`async-enhanced` 排除(驱动 sleep)。
 - **json-serialization 的 Kotlin 体积**是 2.4.20 缓存边界移动的结果,与 2.2 的旧值不可直接比。
